@@ -6,7 +6,8 @@ services:
     startCommand: python backend/ws_server.py
     plan: starter
     envVars:
-      - key: PORT
-        value: 5000
+      # PORT is injected automatically by Render — do not hardcode it (FIX #14)
       - key: MORIX_DB
         value: morix.db
+      # Note: morix_users.json is also ephemeral on Render free tier.
+      # For persistence, provision a Render Disk or switch to PostgreSQL.
