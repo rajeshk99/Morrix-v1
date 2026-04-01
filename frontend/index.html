@@ -8,15 +8,15 @@
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
   --bg:#0f0f1a;--surface:#16213e;--surface2:#1a2850;--border:#0f3460;
-  --gold:#e2b96f;--gold2:#f0cc8a;--blue:#6ab0ff;--red:#ff6a6a;--green:#6aff9e;
-  --muted:#7a8099;--text:#eef0f8;--text2:#b0b8d0;--online:#6aff9e;--offline:#555;
+  --gold:#e2b96f;--blue:#6ab0ff;--red:#ff6a6a;--green:#6aff9e;
+  --muted:#7a8099;--text:#eef0f8;--text2:#b0b8d0;
   --radius:12px;--radius-sm:8px;
 }
 body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-.screen{display:none;width:100%;min-height:100vh}
-.screen.active{display:flex}
-/* LOGIN */
+.screen{display:none;width:100%;min-height:100vh}.screen.active{display:flex}
+
+/* ── LOGIN ── */
 #login-screen{align-items:center;justify-content:center;background:radial-gradient(ellipse at 50% 0%,#1a2850 0%,#0f0f1a 70%)}
 .login-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px 36px;width:360px;box-shadow:0 20px 60px #00000088}
 .logo{text-align:center;margin-bottom:28px}
@@ -24,20 +24,20 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .logo p{color:var(--muted);font-size:0.85rem;margin-top:4px;letter-spacing:1px}
 .field-label{font-size:0.78rem;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;display:block}
 .field{width:100%;padding:11px 14px;background:#0d0d1a;border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:0.95rem;margin-bottom:16px;transition:border-color 0.2s}
-.field:focus{outline:none;border-color:var(--gold)}
-.field::placeholder{color:#333;font-size:0.85rem}
+.field:focus{outline:none;border-color:var(--gold)}.field::placeholder{color:#333;font-size:0.85rem}
 .btn{padding:11px 24px;border:none;border-radius:var(--radius-sm);font-size:0.95rem;cursor:pointer;font-weight:600;transition:all 0.2s;display:inline-flex;align-items:center;gap:6px}
 .btn:hover{opacity:0.88;transform:translateY(-1px)}.btn:active{transform:translateY(0)}
 .btn-gold{background:var(--gold);color:#1a1a2e;width:100%}
 .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text2)}
-.btn-ghost{background:var(--surface2);color:var(--text);width:100%}
+.btn-ghost{background:var(--surface2);color:var(--text)}
 .btn-danger{background:#3a1a1a;color:var(--red);border:1px solid #ff6a6a33}
 .btn-success{background:#1a3a1a;color:var(--green);border:1px solid #6aff6a33}
 .btn-sm{padding:6px 14px;font-size:0.8rem;font-weight:500}
 .login-switch{text-align:center;margin-top:16px;font-size:0.82rem;color:var(--muted)}
 .login-switch span{color:var(--gold);cursor:pointer;text-decoration:underline}
 #login-error{color:var(--red);font-size:0.82rem;min-height:18px;margin-bottom:8px;text-align:center}
-/* MAIN */
+
+/* ── MAIN ── */
 #main-screen{flex-direction:row;align-items:stretch;min-height:100vh}
 .game-col{flex:1;display:flex;flex-direction:column;align-items:center;padding:28px 20px;min-height:100vh}
 .top-bar{width:100%;max-width:480px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
@@ -45,7 +45,8 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .user-pill{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:6px 14px 6px 8px;font-size:0.82rem;color:var(--text2)}
 .avatar{width:26px;height:26px;border-radius:50%;font-weight:700;font-size:0.75rem;display:flex;align-items:center;justify-content:center}
 .logout-btn{background:none;border:none;color:var(--muted);font-size:0.72rem;cursor:pointer;margin-left:6px;padding:2px 6px;border-radius:4px}
-.logout-btn:hover{color:var(--red);background:#ff6a6a11}
+.logout-btn:hover{color:var(--red)}
+
 #lobby{width:100%;max-width:420px;display:flex;flex-direction:column;gap:14px}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px}
 .card-title{font-size:0.75rem;color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:12px;font-weight:600}
@@ -53,14 +54,18 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .code-row{display:flex;gap:8px}.code-row .field{margin-bottom:0}
 .divider-row{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:0.8rem}
 .divider-row::before,.divider-row::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* matches */
 .matches-section{width:100%;max-width:420px;margin-top:4px}
 .section-title{font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;font-weight:600}
 .match-item{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:0.85rem}
 .match-vs{color:var(--text2)}.match-vs strong{color:var(--text)}
 .match-result{font-size:0.78rem;font-weight:600;padding:3px 10px;border-radius:20px}
-.result-win{background:#1a3a1a;color:var(--green)}.result-loss{background:#3a1a1a;color:var(--red)}.result-draw{background:#2a2a1a;color:var(--gold)}
+.result-win{background:#1a3a1a;color:var(--green)}.result-loss{background:#3a1a1a;color:var(--red)}
 .match-date{color:var(--muted);font-size:0.72rem}
 .no-matches{color:var(--muted);font-size:0.82rem;text-align:center;padding:16px 0}
+
+/* waiting */
 #waiting{display:none;flex-direction:column;align-items:center;gap:18px;text-align:center;width:100%;max-width:380px}
 .big-code{font-size:3.2rem;font-weight:700;letter-spacing:14px;color:var(--gold);background:var(--surface);padding:20px 32px;border-radius:16px;border:2px dashed var(--gold)}
 .copy-btn{background:none;border:1px solid var(--gold);color:var(--gold);padding:7px 20px;border-radius:var(--radius-sm);cursor:pointer;font-size:0.85rem}
@@ -68,8 +73,10 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .pulse{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:0.88rem}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--gold);animation:pulse 1.2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.2}}
+
+/* game board */
 #game{display:none;flex-direction:column;align-items:center;gap:12px;width:100%;max-width:420px}
-.player-badges{display:flex;gap:16px;font-size:0.85rem}
+.player-badges{display:flex;gap:16px}
 .badge{padding:7px 18px;border-radius:20px;font-weight:600;font-size:0.82rem;transition:outline 0.2s}
 .badge-x{background:#1a3a6e;color:var(--blue)}.badge-o{background:#3a1a1a;color:var(--red)}.badge.active{outline:2px solid var(--gold)}
 #status{font-size:1rem;color:var(--gold);min-height:26px;font-weight:600;text-align:center}
@@ -81,12 +88,16 @@ svg .selected{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 6px #fff)}
 .game-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 #error-msg{color:var(--red);font-size:0.85rem;min-height:18px;text-align:center}
 .room-code-small{font-size:0.75rem;color:#333}
+
+/* overlay */
 #overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);align-items:center;justify-content:center;z-index:200}
 #overlay.show{display:flex}
 .overlay-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:36px 44px;text-align:center;max-width:320px;width:90%;box-shadow:0 20px 60px #00000099}
 .overlay-box h2{font-size:1.6rem;color:var(--gold);margin-bottom:10px}
 .overlay-box p{color:var(--text2);margin-bottom:20px;font-size:0.92rem}
 .overlay-box .btn{margin:4px}
+
+/* leaderboard */
 #leaderboard-section{width:100%;max-width:420px;margin-top:8px}
 #leaderboard-section summary{color:var(--gold);cursor:pointer;font-size:0.82rem;user-select:none;list-style:none;padding:6px 0;border-bottom:1px solid var(--border)}
 #leaderboard-section summary::-webkit-details-marker{display:none}
@@ -94,8 +105,9 @@ svg .selected{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 6px #fff)}
 #lb-table th{color:var(--muted);font-weight:500;text-align:left;padding:4px 6px}
 #lb-table td{padding:5px 6px;color:var(--text2)}
 #lb-table tr:nth-child(even) td{background:#16213e55}
-/* FRIENDS PANEL */
-.friends-col{width:272px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;padding:0;min-height:100vh;flex-shrink:0}
+
+/* ── FRIENDS PANEL ── */
+.friends-col{width:272px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;min-height:100vh;flex-shrink:0}
 .friends-header{padding:18px 14px 12px;border-bottom:1px solid var(--border);background:var(--surface2)}
 .friends-header h3{font-size:0.78rem;color:var(--gold);text-transform:uppercase;letter-spacing:1.5px;font-weight:600;margin-bottom:10px}
 .add-friend-row{display:flex;gap:6px}
@@ -111,27 +123,26 @@ svg .selected{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 6px #fff)}
 .friend-item:hover{background:var(--surface2)}
 .friend-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.8rem;flex-shrink:0;position:relative}
 .status-dot{position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;border:2px solid var(--surface)}
-.status-dot.online{background:var(--online)}.status-dot.offline{background:var(--offline)}.status-dot.ingame{background:#ffb347}
+.status-dot.online{background:#6aff9e}.status-dot.offline{background:#555}.status-dot.ingame{background:#ffb347}
 .friend-info{flex:1;min-width:0}
 .friend-name{font-size:0.84rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .friend-status-text{font-size:0.71rem;color:var(--muted)}
-.friend-status-text.online-text{color:var(--online)}.friend-status-text.ingame-text{color:#ffb347}
-.invite-btn{background:var(--gold);color:#1a1a2e;border:none;border-radius:6px;padding:4px 9px;font-size:0.71rem;font-weight:700;cursor:pointer;flex-shrink:0;transition:opacity 0.15s}
+.friend-status-text.online-text{color:#6aff9e}.friend-status-text.ingame-text{color:#ffb347}
+.invite-btn{background:var(--gold);color:#1a1a2e;border:none;border-radius:6px;padding:4px 9px;font-size:0.71rem;font-weight:700;cursor:pointer;flex-shrink:0}
 .invite-btn:hover{opacity:0.85}.invite-btn:disabled{opacity:0.3;cursor:default}
 .remove-btn{background:none;border:none;color:var(--muted);font-size:0.72rem;cursor:pointer;padding:3px;border-radius:4px;opacity:0;transition:opacity 0.15s}
 .friend-item:hover .remove-btn{opacity:1}.remove-btn:hover{color:var(--red)}
-.no-friends{text-align:center;padding:24px 10px;color:var(--muted);font-size:0.82rem;line-height:1.6}
+.no-friends{text-align:center;padding:24px 10px;color:var(--muted);font-size:0.82rem;line-height:1.7}
+
+/* toast */
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--gold);color:var(--text);padding:10px 20px;border-radius:10px;font-size:0.85rem;z-index:300;animation:fadeInUp 0.3s ease;box-shadow:0 4px 20px #00000066}
 @keyframes fadeInUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
-#request-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;z-index:250}
-#request-modal.show{display:flex}
-.request-box{background:var(--surface);border:1px solid var(--gold);border-radius:16px;padding:28px 32px;text-align:center;max-width:300px;width:90%;box-shadow:0 12px 40px #00000099}
-.request-box h3{color:var(--gold);margin-bottom:8px;font-size:1.1rem}
-.request-box p{color:var(--text2);font-size:0.85rem;margin-bottom:18px}
-.request-box .btn-row{display:flex;gap:10px;justify-content:center}
+
+/* incoming invite banner */
 #incoming-banner{display:none;background:var(--surface2);border:1px solid var(--gold);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;font-size:0.85rem;width:100%;max-width:420px;align-items:center;justify-content:space-between;gap:10px}
 #incoming-banner.show{display:flex}
 .incoming-text{color:var(--text)}.incoming-text strong{color:var(--gold)}
+
 @media(max-width:720px){#main-screen{flex-direction:column}.friends-col{width:100%;min-height:auto;border-left:none;border-top:1px solid var(--border)}}
 </style>
 </head>
@@ -195,7 +206,7 @@ svg .selected{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 6px #fff)}
         <p class="desc">Enter the 4-digit code from your friend</p>
         <div class="code-row">
           <input class="field" id="joinCode" type="text" maxlength="4" placeholder="1234" style="letter-spacing:6px;text-align:center;font-size:1.1rem"/>
-          <button class="btn btn-ghost" style="width:auto" onclick="joinGame()">Join →</button>
+          <button class="btn btn-ghost" onclick="joinGame()">Join →</button>
         </div>
       </div>
       <p id="lobby-error" style="color:var(--red);font-size:0.82rem;min-height:18px;text-align:center"></p>
@@ -268,7 +279,7 @@ svg .selected{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 6px #fff)}
       <div id="add-friend-error"></div>
     </div>
     <div class="friends-list" id="friends-list">
-      <div class="no-friends" id="no-friends-msg">Add friends by username to see when they're online!</div>
+      <div class="no-friends">Add friends by username.<br/>They can be on any device!</div>
     </div>
   </div>
 </div>
@@ -283,146 +294,213 @@ svg .selected{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 6px #fff)}
   </div>
 </div>
 
-<div id="request-modal">
-  <div class="request-box">
-    <h3>⚔️ Challenge Sent!</h3>
-    <p id="request-modal-msg">Waiting for your friend...</p>
-    <div class="btn-row"><button class="btn btn-danger btn-sm" onclick="cancelInvite()">Cancel</button></div>
-  </div>
-</div>
-
 <script>
-// ── DB ──
-const DB_KEY='morix_db'
-function loadDB(){try{return JSON.parse(localStorage.getItem(DB_KEY))||{}}catch{return{}}}
-function saveDB(db){localStorage.setItem(DB_KEY,JSON.stringify(db))}
-function getUserData(u){const db=loadDB();return db[u]||{password:null,friends:[],matches:[]}}
-function saveUserData(u,d){const db=loadDB();db[u]=d;saveDB(db)}
-function userExists(u){return!!loadDB()[u]}
+// ══════════════════════════════════════════════════════════
+//  CONFIG
+// ══════════════════════════════════════════════════════════
+const wsHost = (location.hostname === 'localhost' || location.hostname === '127.0.0.1')
+  ? 'ws://127.0.0.1:5000/ws'
+  : `wss://${location.hostname}/ws`
 
-// ── AVATAR ──
-const AV_COLS=['#e2b96f','#6ab0ff','#6aff9e','#ff6a6a','#c878ff','#ff9f47','#78d4ff']
-function avColor(n){let h=0;for(let c of n)h=(h*31+c.charCodeAt(0))&0xffff;return AV_COLS[h%AV_COLS.length]}
-function initials(n){return n.slice(0,2).toUpperCase()}
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+let socket        = null
+let currentUser   = null
+let authToken     = null          // server-issued auth token
+let playerSymbol  = null
+let selected      = null
+let boardState    = Array(9).fill(null)
+let gameCode      = null
+let opponentName  = 'Opponent'
+let reconnectAttempts = 0
+const MAX_RECONNECTS  = 5
 
-// ── AUTH ──
-let currentUser=null
-function toggleForm(w){
-  document.getElementById('form-login').style.display=w==='login'?'':'none'
-  document.getElementById('form-register').style.display=w==='register'?'':'none'
+// friends state: name -> status
+let friendStatuses = {}
+// local match history (per user, stored in localStorage)
+function matchKey(u) { return `morix_matches_${u}` }
+function loadMatches() {
+  try { return JSON.parse(localStorage.getItem(matchKey(currentUser))) || [] } catch { return [] }
+}
+function saveMatch(opponent, result) {
+  const matches = loadMatches()
+  matches.push({ opponent, result, date: new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) })
+  if (matches.length > 20) matches.splice(0, matches.length - 20)
+  localStorage.setItem(matchKey(currentUser), JSON.stringify(matches))
+  renderMatchHistory()
+}
+
+// ══════════════════════════════════════════════════════════
+//  AVATAR HELPERS
+// ══════════════════════════════════════════════════════════
+const AV_COLS = ['#e2b96f','#6ab0ff','#6aff9e','#ff6a6a','#c878ff','#ff9f47','#78d4ff']
+function avColor(n) { let h=0; for(let c of n) h=(h*31+c.charCodeAt(0))&0xffff; return AV_COLS[h%AV_COLS.length] }
+function initials(n) { return n.slice(0,2).toUpperCase() }
+
+// ══════════════════════════════════════════════════════════
+//  UI HELPERS
+// ══════════════════════════════════════════════════════════
+function setLoginError(m) { document.getElementById('login-error').textContent = m }
+function showLobbyError(m) { document.getElementById('lobby-error').textContent = m }
+function showError(m) { const el=document.getElementById('error-msg'); el.textContent=m; el.style.display=m?'block':'none' }
+function showOverlay(title,msg,showRematch=true) {
+  document.getElementById('overlay-title').textContent = title
+  document.getElementById('overlay-msg').textContent   = msg
+  document.getElementById('overlay-rematch').style.display = showRematch?'inline-block':'none'
+  document.getElementById('overlay').classList.add('show')
+}
+function hideOverlay() { document.getElementById('overlay').classList.remove('show') }
+function toggleForm(w) {
+  document.getElementById('form-login').style.display    = w==='login'?'':'none'
+  document.getElementById('form-register').style.display = w==='register'?'':'none'
   setLoginError('')
 }
-function setLoginError(m){document.getElementById('login-error').textContent=m}
-function doLogin(){
-  const u=document.getElementById('login-user').value.trim()
-  const p=document.getElementById('login-pass').value
-  if(!u||!p){setLoginError('Please fill in all fields.');return}
-  if(!userExists(u)){setLoginError('Username not found.');return}
-  if(getUserData(u).password!==p){setLoginError('Incorrect password.');return}
-  enterApp(u)
+function showToast(msg) {
+  const t = document.createElement('div'); t.className='toast'; t.textContent=msg
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 3000)
 }
-function doRegister(){
-  const u=document.getElementById('reg-user').value.trim()
-  const p=document.getElementById('reg-pass').value
-  const p2=document.getElementById('reg-pass2').value
-  if(!u||!p){setLoginError('Please fill in all fields.');return}
-  if(p!==p2){setLoginError('Passwords do not match.');return}
-  if(u.length<3){setLoginError('Username must be 3+ characters.');return}
-  if(userExists(u)){setLoginError('Username already taken.');return}
-  saveUserData(u,{password:p,friends:[],matches:[]})
-  enterApp(u)
+function goToLobby() {
+  hideOverlay(); clearGameSession()
+  document.getElementById('game').style.display    = 'none'
+  document.getElementById('waiting').style.display = 'none'
+  document.getElementById('lobby').style.display   = ''
+  renderMatchHistory()
 }
-function enterApp(username){
-  currentUser=username
-  sessionStorage.setItem('morix_user',username)
+
+// ══════════════════════════════════════════════════════════
+//  WEBSOCKET — single persistent connection
+// ══════════════════════════════════════════════════════════
+function openSocket(onopen) {
+  if (socket && socket.readyState <= 1) { if(onopen) onopen(); return }
+  socket = new WebSocket(wsHost)
+  socket.onopen    = onopen || null
+  socket.onmessage = onMessage
+  socket.onerror   = () => setLoginError('Cannot connect to server. Is it running?')
+  socket.onclose   = onSocketClose
+}
+
+function sendMsg(obj) {
+  if (socket && socket.readyState === WebSocket.OPEN)
+    socket.send(JSON.stringify(obj))
+}
+
+function onSocketClose() {
+  if (reconnectAttempts >= MAX_RECONNECTS) { showError('Connection lost. Please refresh.'); return }
+  const token = sessionStorage.getItem('morix_game_token')
+  if (!token) return
+  const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 16000)
+  reconnectAttempts++
+  document.getElementById('status').textContent = `Reconnecting... (${reconnectAttempts})`
+  setTimeout(() => openSocket(() => sendMsg({ action:'rejoin', token })), delay)
+}
+
+// ══════════════════════════════════════════════════════════
+//  AUTH
+// ══════════════════════════════════════════════════════════
+function doLogin() {
+  const u = document.getElementById('login-user').value.trim()
+  const p = document.getElementById('login-pass').value
+  if (!u||!p) { setLoginError('Please fill in all fields.'); return }
+  setLoginError('Connecting...')
+  openSocket(() => sendMsg({ action:'login', username:u, password:p }))
+}
+
+function doRegister() {
+  const u  = document.getElementById('reg-user').value.trim()
+  const p  = document.getElementById('reg-pass').value
+  const p2 = document.getElementById('reg-pass2').value
+  if (!u||!p) { setLoginError('Please fill in all fields.'); return }
+  if (p.length < 6) { setLoginError('Password must be at least 6 characters.'); return }
+  if (p!==p2) { setLoginError('Passwords do not match.'); return }
+  if (u.length<3) { setLoginError('Username must be 3+ characters.'); return }
+  setLoginError('Connecting...')
+  openSocket(() => sendMsg({ action:'register', username:u, password:p }))
+}
+
+function enterApp(username, token, friends, statuses) {
+  currentUser = username
+  authToken   = token
+  sessionStorage.setItem('morix_auth', token)
+  sessionStorage.setItem('morix_user', username)
+
   document.getElementById('login-screen').classList.remove('active')
   document.getElementById('main-screen').classList.add('active')
-  const col=avColor(username)
-  const av=document.getElementById('user-avatar')
-  av.textContent=initials(username);av.style.background=col;av.style.color='#1a1a2e'
-  document.getElementById('user-display-name').textContent=username
-  renderMatchHistory();renderFriends();startFriendStatusSim()
-}
-function doLogout(){currentUser=null;sessionStorage.clear();location.reload()}
+  const col = avColor(username)
+  const av  = document.getElementById('user-avatar')
+  av.textContent = initials(username); av.style.background=col; av.style.color='#1a1a2e'
+  document.getElementById('user-display-name').textContent = username
 
-// ── MATCH HISTORY ──
-function renderMatchHistory(){
-  if(!currentUser)return
-  const data=getUserData(currentUser)
-  const matches=(data.matches||[]).slice(-3).reverse()
-  const el=document.getElementById('match-history')
-  if(!matches.length){el.innerHTML='<div class="no-matches">No games played yet. Host or join a game!</div>';return}
-  el.innerHTML=matches.map(m=>`
-    <div class="match-item">
-      <div><div class="match-vs">vs <strong>${m.opponent}</strong></div><div class="match-date">${m.date}</div></div>
-      <span class="match-result result-${m.result}">${m.result.toUpperCase()}</span>
-    </div>`).join('')
-}
-function saveMatchResult(opponent,result){
-  if(!currentUser)return
-  const data=getUserData(currentUser)
-  data.matches=data.matches||[]
-  data.matches.push({opponent,result,date:new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})})
-  if(data.matches.length>20)data.matches=data.matches.slice(-20)
-  saveUserData(currentUser,data);renderMatchHistory()
-}
-
-// ── FRIENDS ──
-let friendStatuses={}
-function startFriendStatusSim(){updateFriendStatuses();setInterval(updateFriendStatuses,9000)}
-function updateFriendStatuses(){
-  if(!currentUser)return
-  const data=getUserData(currentUser)
-  const pool=['online','offline','offline','ingame']
-  ;(data.friends||[]).forEach(f=>{
-    if(!friendStatuses[f])friendStatuses[f]=pool[Math.floor(Math.random()*pool.length)]
-    else if(Math.random()<0.2)friendStatuses[f]=pool[Math.floor(Math.random()*pool.length)]
-  })
+  // seed friends from server data
+  friendStatuses = {}
+  ;(friends||[]).forEach(f => { friendStatuses[f] = (statuses||{})[f] || 'offline' })
   renderFriends()
+  renderMatchHistory()
 }
-function addFriend(){
-  const inp=document.getElementById('friend-input')
-  const name=inp.value.trim()
-  const errEl=document.getElementById('add-friend-error')
-  errEl.textContent=''
-  if(!name){errEl.textContent='Enter a username.';return}
-  if(name===currentUser){errEl.textContent="That's you!";return}
-  if(!userExists(name)){errEl.textContent='User not found.';return}
-  const data=getUserData(currentUser)
-  data.friends=data.friends||[]
-  if(data.friends.includes(name)){errEl.textContent='Already friends.';return}
-  data.friends.push(name);saveUserData(currentUser,data)
-  inp.value='';friendStatuses[name]=Math.random()>0.5?'online':'offline'
-  renderFriends();showToast(`${name} added!`)
+
+function doLogout() {
+  currentUser = null; authToken = null
+  sessionStorage.clear()
+  if (socket) { try { socket.close() } catch(_) {} socket = null }
+  location.reload()
 }
-function removeFriend(name){
-  const data=getUserData(currentUser)
-  data.friends=(data.friends||[]).filter(f=>f!==name)
-  saveUserData(currentUser,data);delete friendStatuses[name];renderFriends()
+
+// auto-login on page load
+window.addEventListener('load', () => {
+  const savedAuth = sessionStorage.getItem('morix_auth')
+  const savedUser = sessionStorage.getItem('morix_user')
+  if (savedAuth && savedUser) {
+    // FIX #11: server auto_login response now includes active_game; handled in onMessage
+    openSocket(() => sendMsg({ action:'auto_login', auth_token: savedAuth }))
+    return
+  }
+  const savedGame = sessionStorage.getItem('morix_game_token')
+  if (savedGame) openSocket(() => sendMsg({ action:'rejoin', token: savedGame }))
+})
+
+// ══════════════════════════════════════════════════════════
+//  FRIENDS
+// ══════════════════════════════════════════════════════════
+function addFriend() {
+  const inp  = document.getElementById('friend-input')
+  const name = inp.value.trim()
+  const errEl = document.getElementById('add-friend-error')
+  errEl.textContent = ''
+  if (!name) { errEl.textContent='Enter a username.'; return }
+  sendMsg({ action:'add_friend', username:name })
+  inp.value = ''
 }
-function renderFriends(){
-  if(!currentUser)return
-  const data=getUserData(currentUser)
-  const friends=data.friends||[]
-  const list=document.getElementById('friends-list')
-  if(!friends.length){list.innerHTML='<div class="no-friends" id="no-friends-msg">Add friends by username to see when they\'re online and invite them to play!</div>';return}
-  const online=friends.filter(f=>friendStatuses[f]==='online')
-  const ingame=friends.filter(f=>friendStatuses[f]==='ingame')
-  const offline=friends.filter(f=>!friendStatuses[f]||friendStatuses[f]==='offline')
-  let html=''
-  if(online.length)html+=`<div class="friends-group-label">Online — ${online.length}</div>`+online.map(f=>friendCard(f,'online')).join('')
-  if(ingame.length)html+=`<div class="friends-group-label">In Game</div>`+ingame.map(f=>friendCard(f,'ingame')).join('')
-  if(offline.length)html+=`<div class="friends-group-label">Offline</div>`+offline.map(f=>friendCard(f,'offline')).join('')
-  list.innerHTML=html
+
+function removeFriend(name) {
+  sendMsg({ action:'remove_friend', username:name })
 }
-function friendCard(name,status){
-  const col=avColor(name)
-  const inv=status==='online'
-    ?`<button class="invite-btn" onclick="sendInvite('${name}')">Invite</button>`
-    :`<button class="invite-btn" disabled>Invite</button>`
-  const st=status==='online'?`<span class="friend-status-text online-text">● Online</span>`
-    :status==='ingame'?`<span class="friend-status-text ingame-text">🎮 In game</span>`
-    :`<span class="friend-status-text">● Offline</span>`
+
+function renderFriends() {
+  const list = document.getElementById('friends-list')
+  const friends = Object.keys(friendStatuses)
+  if (!friends.length) {
+    list.innerHTML = '<div class="no-friends">Add friends by username.<br/>They can be on <strong>any device</strong>!</div>'
+    return
+  }
+  const online  = friends.filter(f => friendStatuses[f]==='online')
+  const ingame  = friends.filter(f => friendStatuses[f]==='ingame')
+  const offline = friends.filter(f => !friendStatuses[f]||friendStatuses[f]==='offline')
+  let html = ''
+  if (online.length)  html += `<div class="friends-group-label">Online — ${online.length}</div>`  + online.map(friendCard).join('')
+  if (ingame.length)  html += `<div class="friends-group-label">In Game</div>`                    + ingame.map(friendCard).join('')
+  if (offline.length) html += `<div class="friends-group-label">Offline</div>`                    + offline.map(friendCard).join('')
+  list.innerHTML = html
+}
+
+function friendCard(name) {
+  const status = friendStatuses[name] || 'offline'
+  const col = avColor(name)
+  const inv = status==='online'
+    ? `<button class="invite-btn" onclick="sendInvite('${name}')">Invite</button>`
+    : `<button class="invite-btn" disabled>Invite</button>`
+  const st = status==='online'  ? `<span class="friend-status-text online-text">● Online</span>`
+           : status==='ingame'  ? `<span class="friend-status-text ingame-text">🎮 In game</span>`
+           :                      `<span class="friend-status-text">● Offline</span>`
   return `<div class="friend-item">
     <div class="friend-avatar" style="background:${col};color:#1a1a2e">${initials(name)}<div class="status-dot ${status}"></div></div>
     <div class="friend-info"><div class="friend-name">${name}</div>${st}</div>
@@ -431,130 +509,302 @@ function friendCard(name,status){
   </div>`
 }
 
-// ── INVITE ──
-let pendingInviteTo=null,pendingInviteFrom=null
-function sendInvite(friendName){
-  pendingInviteTo=friendName
-  document.getElementById('request-modal-msg').textContent=`Waiting for ${friendName} to accept...`
-  document.getElementById('request-modal').classList.add('show')
-  setTimeout(()=>{
-    if(!pendingInviteTo)return
-    document.getElementById('request-modal').classList.remove('show')
-    pendingInviteTo=null
-    showToast(`${friendName} accepted! Hosting a game...`)
-    setTimeout(hostGame,800)
-  },2000+Math.random()*2000)
-}
-function cancelInvite(){pendingInviteTo=null;document.getElementById('request-modal').classList.remove('show')}
-function acceptInvite(){document.getElementById('incoming-banner').classList.remove('show');showToast(`Joining ${pendingInviteFrom}'s game...`);pendingInviteFrom=null;setTimeout(hostGame,800)}
-function declineInvite(){document.getElementById('incoming-banner').classList.remove('show');pendingInviteFrom=null}
+// ══════════════════════════════════════════════════════════
+//  INVITES
+// ══════════════════════════════════════════════════════════
+let pendingInviteFrom = null
+let pendingInvitee    = null   // set when we hosted for an invitee
 
-// ── TOAST ──
-function showToast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3000)}
+function sendInvite(friendName) {
+  sendMsg({ action:'send_invite', to: friendName })
+  showToast(`Invite sent to ${friendName}!`)
+}
 
-// ── WEBSOCKET / GAME ──
-const wsHost=(window.location.hostname==='localhost'||window.location.hostname==='127.0.0.1')
-  ?'ws://127.0.0.1:5000/ws':`wss://${window.location.hostname}/ws`
-let socket=null,playerSymbol=null,selected=null,boardState=Array(9).fill(null),gameCode=null,opponentName='Opponent',reconnectAttempts=0
-const MAX_RECONNECTS=5
+function acceptInvite() {
+  document.getElementById('incoming-banner').classList.remove('show')
+  sendMsg({ action:'accept_invite', from: pendingInviteFrom })
+  showToast(`Invite accepted! Waiting for ${pendingInviteFrom} to host...`)
+  // The inviter receives invite_accepted -> they host -> server pushes room_code_for_invitee back to us
+  pendingInviteFrom = null
+}
 
-function showError(m){const el=document.getElementById('error-msg');el.textContent=m;el.style.display=m?'block':'none'}
-function showLobbyError(m){document.getElementById('lobby-error').textContent=m}
-function showOverlay(title,msg,showRematch=true){
-  document.getElementById('overlay-title').textContent=title
-  document.getElementById('overlay-msg').textContent=msg
-  document.getElementById('overlay-rematch').style.display=showRematch?'inline-block':'none'
-  document.getElementById('overlay').classList.add('show')
+function declineInvite() {
+  document.getElementById('incoming-banner').classList.remove('show')
+  sendMsg({ action:'decline_invite', from: pendingInviteFrom })
+  pendingInviteFrom = null
 }
-function hideOverlay(){document.getElementById('overlay').classList.remove('show')}
-function goToLobby(){
-  hideOverlay();clearSession()
-  document.getElementById('game').style.display='none'
-  document.getElementById('waiting').style.display='none'
-  document.getElementById('lobby').style.display=''
-  renderMatchHistory()
+
+// ══════════════════════════════════════════════════════════
+//  MATCH HISTORY
+// ══════════════════════════════════════════════════════════
+function renderMatchHistory() {
+  const el = document.getElementById('match-history')
+  if (!currentUser) { el.innerHTML=''; return }
+  const matches = loadMatches().slice(-3).reverse()
+  if (!matches.length) { el.innerHTML='<div class="no-matches">No games played yet!</div>'; return }
+  el.innerHTML = matches.map(m=>`
+    <div class="match-item">
+      <div><div class="match-vs">vs <strong>${m.opponent}</strong></div><div class="match-date">${m.date}</div></div>
+      <span class="match-result result-${m.result}">${m.result.toUpperCase()}</span>
+    </div>`).join('')
 }
-function saveSession(token,code,symbol){sessionStorage.setItem('morix_token',token);sessionStorage.setItem('morix_code',code);sessionStorage.setItem('morix_symbol',symbol)}
-function clearSession(){sessionStorage.removeItem('morix_token');sessionStorage.removeItem('morix_code');sessionStorage.removeItem('morix_symbol')}
-function getSavedSession(){return{token:sessionStorage.getItem('morix_token'),code:sessionStorage.getItem('morix_code'),symbol:sessionStorage.getItem('morix_symbol')}}
-function connectSocket(onOpen){
-  if(socket){try{socket.close()}catch(_){}}
-  socket=new WebSocket(wsHost)
-  socket.onopen=onOpen;socket.onmessage=handleMessage
-  socket.onerror=()=>showLobbyError('Connection failed. Is the server running?')
-  socket.onclose=onSocketClose
+
+// ══════════════════════════════════════════════════════════
+//  GAME FLOW
+// ══════════════════════════════════════════════════════════
+function saveGameSession(token, code, symbol) {
+  sessionStorage.setItem('morix_game_token',  token)
+  sessionStorage.setItem('morix_game_code',   code)
+  sessionStorage.setItem('morix_game_symbol', symbol)
 }
-function onSocketClose(){
-  if(reconnectAttempts>=MAX_RECONNECTS){showError('Connection lost. Please refresh.');return}
-  const saved=getSavedSession();if(!saved.token)return
-  const delay=Math.min(1000*Math.pow(2,reconnectAttempts),16000);reconnectAttempts++
-  document.getElementById('status').textContent=`Reconnecting... (attempt ${reconnectAttempts})`
-  setTimeout(()=>connectSocket(()=>socket.send(JSON.stringify({action:'rejoin',token:saved.token}))),delay)
+function clearGameSession() {
+  sessionStorage.removeItem('morix_game_token')
+  sessionStorage.removeItem('morix_game_code')
+  sessionStorage.removeItem('morix_game_symbol')
 }
-function hostGame(){showLobbyError('');connectSocket(()=>socket.send(JSON.stringify({action:'host'})))}
-function joinGame(){
+
+function hostGame() {
   showLobbyError('')
-  const code=document.getElementById('joinCode').value.trim()
-  if(code.length!==4||!/^\d{4}$/.test(code)){showLobbyError('Please enter a valid 4-digit code.');return}
-  connectSocket(()=>socket.send(JSON.stringify({action:'join',code})))
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    openSocket(() => sendMsg({ action:'host' })); return
+  }
+  sendMsg({ action:'host' })
 }
-function copyCode(){navigator.clipboard.writeText(gameCode).then(()=>{const b=document.querySelector('.copy-btn');b.textContent='✅ Copied!';setTimeout(()=>b.textContent='📋 Copy Code',2000)})}
-function leaveGame(){clearSession();location.reload()}
-function requestRematch(){
-  if(socket&&socket.readyState===WebSocket.OPEN){
-    socket.send(JSON.stringify({action:'rematch'}))
-    document.getElementById('status').textContent='Rematch requested...'
-    document.getElementById('rematch-btn').disabled=true;hideOverlay()
+
+function joinGame() {
+  showLobbyError('')
+  const code = document.getElementById('joinCode').value.trim()
+  if (code.length!==4||!/^\d{4}$/.test(code)) { showLobbyError('Please enter a valid 4-digit code.'); return }
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    openSocket(() => sendMsg({ action:'join', code })); return
+  }
+  sendMsg({ action:'join', code })
+}
+
+function copyCode() {
+  navigator.clipboard.writeText(gameCode).then(()=>{
+    const b=document.querySelector('.copy-btn'); b.textContent='✅ Copied!'
+    setTimeout(()=>b.textContent='📋 Copy Code',2000)
+  })
+}
+
+function leaveGame() {
+  clearGameSession()
+  // FIX #12: return to lobby without a full page reload
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    goToLobby()
+  } else {
+    location.reload()
   }
 }
-function handleMessage(event){
-  const data=JSON.parse(event.data);reconnectAttempts=0
-  if(data.type==='error'){showLobbyError(data.message);return}
-  if(data.type==='hosted'){gameCode=data.code;playerSymbol=data.symbol;saveSession(data.session_token,data.code,data.symbol);document.getElementById('displayCode').textContent=data.code;document.getElementById('lobby').style.display='none';document.getElementById('waiting').style.display='flex'}
-  if(data.type==='joined'){playerSymbol=data.symbol;saveSession(data.session_token,document.getElementById('joinCode').value.trim(),data.symbol);document.getElementById('badge-x').textContent='🔵 Opponent (X)';document.getElementById('badge-o').textContent='🔴 You (O)'}
-  if(data.type==='rejoined'){playerSymbol=data.symbol;gameCode=data.code;document.getElementById('lobby').style.display='none';document.getElementById('waiting').style.display='none';document.getElementById('game').style.display='flex';document.getElementById('status').textContent='Reconnected!';if(playerSymbol==='O'){document.getElementById('badge-x').textContent='🔵 Opponent (X)';document.getElementById('badge-o').textContent='🔴 You (O)'}}
-  if(data.type==='start'){document.getElementById('lobby').style.display='none';document.getElementById('waiting').style.display='none';document.getElementById('game').style.display='flex';document.getElementById('roomCodeSmall').textContent=`Room: ${gameCode||document.getElementById('joinCode').value}`;document.getElementById('status').textContent='Game started!'}
-  if(data.type==='board'){boardState=data.board;updateTurnBadge(data.turn);document.getElementById('status').textContent=data.turn===playerSymbol?'Your turn':"Opponent's turn...";drawBoard(boardState)}
-  if(data.type==='win'){drawBoard(boardState);const youWon=data.player===playerSymbol;document.getElementById('status').textContent=youWon?'🎉 You win!':'😞 You lose!';document.getElementById('rematch-btn').style.display='inline-block';saveMatchResult(opponentName,youWon?'win':'loss');clearSession();showOverlay(youWon?'🎉 You Win!':'😞 You Lose',youWon?'Congratulations! Want to go again?':'Better luck next time!')}
-  if(data.type==='opponent_disconnected'){document.getElementById('status').textContent='⏳ Opponent disconnected...';showError(data.message)}
-  if(data.type==='rematch_waiting'){document.getElementById('status').textContent='Rematch requested...'}
-  if(data.type==='rematch_start'){hideOverlay();boardState=Array(9).fill(null);selected=null;document.getElementById('rematch-btn').style.display='none';document.getElementById('rematch-btn').disabled=false;showError('');document.getElementById('status').textContent='Rematch! Game restarted.'}
+
+function requestRematch() {
+  sendMsg({ action:'rematch' })
+  document.getElementById('status').textContent = 'Rematch requested...'
+  document.getElementById('rematch-btn').disabled = true
+  hideOverlay()
 }
-function updateTurnBadge(turn){document.getElementById('badge-x').classList.toggle('active',turn==='X');document.getElementById('badge-o').classList.toggle('active',turn==='O')}
-function drawBoard(board){
-  const svg=document.querySelector('svg')
+
+// ══════════════════════════════════════════════════════════
+//  MESSAGE HANDLER
+// ══════════════════════════════════════════════════════════
+function onMessage(event) {
+  let data
+  try { data = JSON.parse(event.data) } catch { return }
+  reconnectAttempts = 0
+
+  const t = data.type
+
+  // ── AUTH ──
+  if (t==='registered' || t==='logged_in') {
+    enterApp(data.username, data.auth_token, data.friends, data.statuses)
+    // FIX #11: if server reports an active game session, auto-rejoin it
+    if (data.active_game) {
+      const ag = data.active_game
+      sessionStorage.setItem('morix_game_token',  ag.session_token)
+      sessionStorage.setItem('morix_game_code',   ag.code)
+      sessionStorage.setItem('morix_game_symbol', ag.symbol)
+      sendMsg({ action:'rejoin', token: ag.session_token })
+    }
+    return
+  }
+
+  if (t==='error' && !currentUser) { setLoginError(data.message); return }
+  if (t==='error') { showLobbyError(data.message); return }
+
+  // ── FRIEND UPDATES ──
+  if (t==='friend_statuses') {
+    Object.assign(friendStatuses, data.statuses)
+    renderFriends(); return
+  }
+  if (t==='add_friend_result') {
+    const errEl = document.getElementById('add-friend-error')
+    if (data.success) {
+      friendStatuses[data.friend] = data.status
+      renderFriends(); showToast(`${data.friend} added!`)
+    } else { errEl.textContent = data.message }
+    return
+  }
+  if (t==='remove_friend_result') {
+    if (data.success) { delete friendStatuses[data.friend]; renderFriends() }
+    return
+  }
+
+  // ── INVITES ──
+  if (t==='incoming_invite') {
+    pendingInviteFrom = data.from
+    document.getElementById('incoming-from').textContent = data.from
+    document.getElementById('incoming-banner').classList.add('show')
+    return
+  }
+  if (t==='invite_accepted') {
+    showToast(`${data.by} accepted! Hosting a game for them...`)
+    hostGame()
+    // After hosting, send the room code to the accepter via invite_room_code message
+    // Server will deliver it; we do this once we receive the 'hosted' confirmation (see below)
+    pendingInvitee = data.by
+    return
+  }
+  if (t==='invite_declined') { showToast(`${data.by} declined.`); return }
+
+  // ── GAME ──
+  if (t==='hosted') {
+    gameCode = data.code; playerSymbol = data.symbol
+    saveGameSession(data.session_token, data.code, data.symbol)
+    document.getElementById('displayCode').textContent = data.code
+    document.getElementById('lobby').style.display   = 'none'
+    document.getElementById('waiting').style.display = 'flex'
+    // FIX #3: if we hosted in response to an invite acceptance, push the code to the invitee
+    if (pendingInvitee) {
+      sendMsg({ action:'send_room_code', to: pendingInvitee, code: data.code })
+      pendingInvitee = null
+    }
+    return
+  }
+  if (t==='room_code_for_invitee') {
+    // We were invited; the host just sent us their room code — auto-join
+    document.getElementById('joinCode').value = data.code
+    joinGame()
+    return
+  }
+  if (t==='joined') {
+    playerSymbol = data.symbol
+    saveGameSession(data.session_token, document.getElementById('joinCode').value.trim(), data.symbol)
+    document.getElementById('badge-x').textContent = '🔵 Opponent (X)'
+    document.getElementById('badge-o').textContent = '🔴 You (O)'
+    return
+  }
+  if (t==='rejoined') {
+    playerSymbol = data.symbol; gameCode = data.code
+    document.getElementById('lobby').style.display   = 'none'
+    document.getElementById('waiting').style.display = 'none'
+    document.getElementById('game').style.display    = 'flex'
+    document.getElementById('status').textContent    = 'Reconnected!'
+    if (playerSymbol==='O') {
+      document.getElementById('badge-x').textContent='🔵 Opponent (X)'
+      document.getElementById('badge-o').textContent='🔴 You (O)'
+    }
+    return
+  }
+  if (t==='start') {
+    document.getElementById('lobby').style.display   = 'none'
+    document.getElementById('waiting').style.display = 'none'
+    document.getElementById('game').style.display    = 'flex'
+    document.getElementById('roomCodeSmall').textContent = `Room: ${gameCode||document.getElementById('joinCode').value}`
+    document.getElementById('status').textContent = 'Game started!'
+    return
+  }
+  if (t==='board') {
+    boardState = data.board
+    updateTurnBadge(data.turn)
+    document.getElementById('status').textContent = data.turn===playerSymbol ? 'Your turn' : "Opponent's turn..."
+    drawBoard(boardState); return
+  }
+  if (t==='win') {
+    drawBoard(boardState)
+    const youWon = data.player===playerSymbol
+    document.getElementById('status').textContent = youWon ? '🎉 You win!' : '😞 You lose!'
+    document.getElementById('rematch-btn').style.display = 'inline-block'
+    saveMatch(opponentName, youWon ? 'win' : 'loss')
+    clearGameSession()
+    showOverlay(youWon?'🎉 You Win!':'😞 You Lose', youWon?'Congratulations! Want to go again?':'Better luck next time!')
+    return
+  }
+  if (t==='opponent_disconnected') {
+    document.getElementById('status').textContent = '⏳ Opponent disconnected...'
+    showError(data.message); return
+  }
+  if (t==='rematch_waiting') { document.getElementById('status').textContent = 'Rematch requested...'; return }
+  if (t==='rematch_start') {
+    hideOverlay(); boardState=Array(9).fill(null); selected=null
+    document.getElementById('rematch-btn').style.display='none'
+    document.getElementById('rematch-btn').disabled=false
+    showError(''); document.getElementById('status').textContent='Rematch! Game restarted.'
+    return
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  BOARD
+// ══════════════════════════════════════════════════════════
+function updateTurnBadge(turn) {
+  document.getElementById('badge-x').classList.toggle('active', turn==='X')
+  document.getElementById('badge-o').classList.toggle('active', turn==='O')
+}
+function drawBoard(board) {
+  const svg = document.querySelector('svg')
   document.querySelectorAll('.piece').forEach(p=>p.remove())
   board.forEach((value,index)=>{
-    if(!value)return
-    const vertex=document.querySelector(`circle.vertex[data-pos="${index+1}"]`)
-    const cx=vertex.getAttribute('cx'),cy=vertex.getAttribute('cy')
-    const piece=document.createElementNS('http://www.w3.org/2000/svg','circle')
-    piece.setAttribute('class','piece');piece.setAttribute('data-pos',index+1)
-    piece.setAttribute('cx',cx);piece.setAttribute('cy',cy);piece.setAttribute('r',17)
-    piece.setAttribute('stroke',value==='X'?'#6ab0ff':'#ff6a6a')
-    piece.setAttribute('fill',value==='X'?'#1a3a6e':'#3a1a1a')
+    if (!value) return
+    const vertex = document.querySelector(`circle.vertex[data-pos="${index+1}"]`)
+    const piece  = document.createElementNS('http://www.w3.org/2000/svg','circle')
+    piece.setAttribute('class','piece'); piece.setAttribute('data-pos',index+1)
+    piece.setAttribute('cx',vertex.getAttribute('cx')); piece.setAttribute('cy',vertex.getAttribute('cy'))
+    piece.setAttribute('r',17)
+    piece.setAttribute('stroke', value==='X'?'#6ab0ff':'#ff6a6a')
+    piece.setAttribute('fill',   value==='X'?'#1a3a6e':'#3a1a1a')
     svg.appendChild(piece)
   })
 }
-document.querySelector('svg').addEventListener('click',function(e){
-  if(!socket||socket.readyState!==WebSocket.OPEN)return
-  const target=e.target.closest('[data-pos]');if(!target)return
-  const pos=parseInt(target.dataset.pos),placed=boardState.filter(v=>v!==null).length
-  if(placed<6){socket.send(JSON.stringify(pos));return}
-  if(selected===null){if(boardState[pos-1]===playerSymbol){selected=pos;const piece=document.querySelector(`.piece[data-pos="${pos}"]`);if(piece)piece.classList.add('selected')}return}
-  if(selected===pos){const old=document.querySelector('.selected');if(old)old.classList.remove('selected');selected=null;return}
-  socket.send(JSON.stringify({from:selected,to:pos}));const old=document.querySelector('.selected');if(old)old.classList.remove('selected');selected=null
+document.querySelector('svg').addEventListener('click', function(e) {
+  if (!socket||socket.readyState!==WebSocket.OPEN) return
+  const target = e.target.closest('[data-pos]'); if (!target) return
+  const pos    = parseInt(target.dataset.pos)
+  const placed = boardState.filter(v=>v!==null).length
+  if (placed < 6) { socket.send(JSON.stringify(pos)); return }
+  if (selected===null) {
+    if (boardState[pos-1]===playerSymbol) {
+      selected = pos
+      const piece = document.querySelector(`.piece[data-pos="${pos}"]`)
+      if (piece) piece.classList.add('selected')
+    }
+    return
+  }
+  if (selected===pos) {
+    const old=document.querySelector('.selected'); if(old)old.classList.remove('selected')
+    selected=null; return
+  }
+  socket.send(JSON.stringify({from:selected,to:pos}))
+  const old=document.querySelector('.selected'); if(old)old.classList.remove('selected')
+  selected=null
 })
+
+// keyboard shortcuts
 document.getElementById('joinCode').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame()})
 document.getElementById('friend-input').addEventListener('keydown',e=>{if(e.key==='Enter')addFriend()})
+document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()})
+document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()})
+
+// leaderboard
 document.getElementById('leaderboard-section').addEventListener('toggle',function(){if(this.open)loadLeaderboard()})
-async function loadLeaderboard(){try{const res=await fetch('/api/leaderboard');const data=await res.json();const tbody=document.getElementById('lb-body');if(!data.length){tbody.innerHTML=`<tr><td colspan="3" style="color:#555;padding:6px">No games yet.</td></tr>`;return}tbody.innerHTML=data.map((r,i)=>`<tr><td>${i+1}</td><td>${r.player}</td><td>${r.wins}</td></tr>`).join('')}catch{document.getElementById('lb-body').innerHTML=`<tr><td colspan="3" style="color:#555;padding:6px">Could not load.</td></tr>`}}
-window.addEventListener('load',()=>{
-  const saved=sessionStorage.getItem('morix_user')
-  if(saved&&userExists(saved)){enterApp(saved);return}
-  const tok=sessionStorage.getItem('morix_token')
-  if(tok)connectSocket(()=>socket.send(JSON.stringify({action:'rejoin',token:tok})))
-})
+async function loadLeaderboard(){
+  try{
+    const data=await(await fetch('/api/leaderboard')).json()
+    const tbody=document.getElementById('lb-body')
+    tbody.innerHTML=data.length?data.map((r,i)=>`<tr><td>${i+1}</td><td>${r.player}</td><td>${r.wins}</td></tr>`).join('')
+      :`<tr><td colspan="3" style="color:#555;padding:6px">No games yet.</td></tr>`
+  }catch{document.getElementById('lb-body').innerHTML=`<tr><td colspan="3" style="color:#555">Could not load.</td></tr>`}
+}
 </script>
 </body>
 </html>
