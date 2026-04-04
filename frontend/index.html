@@ -390,6 +390,10 @@ function goToLobby() {
   document.getElementById('rematch-btn').style.display = 'none'
   document.getElementById('rematch-btn').disabled  = false
   renderMatchHistory()
+  // Refresh friend statuses (we're no longer "ingame")
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    sendMsg({ action: 'search_user', username: '__refresh_status__' })
+  }
 }
 function setBadges(mySymbol) {
   if (mySymbol === 'X') {
@@ -658,9 +662,12 @@ function copyCode() {
   })
 }
 function leaveGame() {
+  // Tell server immediately so opponent is notified and room is cleaned up
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    sendMsg({ action: 'leave_game' })
+  }
   clearGameSession(); hideRematchBanner()
-  if (socket && socket.readyState === WebSocket.OPEN) goToLobby()
-  else location.reload()
+  goToLobby()
 }
 
 // ══════════════════════════════════════════════════════════
@@ -805,6 +812,14 @@ function onMessage(event) {
   if (t==='opponent_disconnected') {
     document.getElementById('status').textContent = '⏳ Opponent disconnected...'
     showError(data.message); return
+  }
+
+  // ── OPPONENT LEFT (explicit leave) ──
+  if (t==='opponent_left') {
+    clearGameSession()
+    showOverlay('🚪 Opponent Left', data.message || 'Your opponent left the game.', false)
+    document.getElementById('status').textContent = '🚪 Opponent left'
+    return
   }
 
   // ── REMATCH REQUEST (incoming) ──
