@@ -24,8 +24,6 @@ DB_PATH = os.environ.get("MORIX_DB", "morix.db")
 
 
 # ── Password hashing (PBKDF2 + salt) ─────────────────────────────────────────
-# FIX #4: replaced bare SHA-256 with salted PBKDF2.
-# Stored format: "<hex-salt>:<hex-key>"
 def hash_password(password: str, salt: bytes = None) -> str:
     salt = salt or os.urandom(16)
     key  = hashlib.pbkdf2_hmac('sha256', password.encode(), salt, 260_000)
@@ -41,7 +39,6 @@ def verify_password(password: str, stored: str) -> bool:
         return False
 
 def _try_migrate_legacy(uname: str, password: str) -> bool:
-    """Upgrade a plain-SHA256 record to PBKDF2 on first login after update."""
     udata = users.get(uname, {})
     stored = udata.get("password_hash", "")
     if ':' not in stored:
@@ -54,7 +51,6 @@ def _try_migrate_legacy(uname: str, password: str) -> bool:
 
 
 # ── Input sanitisation ────────────────────────────────────────────────────────
-# FIX #8: restrict usernames to alphanumeric + underscore to prevent XSS.
 _USERNAME_RE = re.compile(r'^[A-Za-z0-9_]{3,32}$')
 def valid_username(name: str) -> bool:
     return bool(_USERNAME_RE.match(name))
@@ -97,7 +93,6 @@ async def init_db():
                     ts        DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             """)
-            # FIX #13: players table is now written to by save_game()
             await db.execute("""
                 CREATE TABLE IF NOT EXISTS players (
                     id       INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,8 +106,6 @@ async def init_db():
     except ImportError:
         print("aiosqlite not installed — running without DB persistence.")
 
-# FIX #7: total_moves counts placement + movement moves, not just placements.
-# FIX #13: upsert wins/losses into the players table.
 async def save_game(winner, loser, total_moves, abandoned=False):
     try:
         import aiosqlite
@@ -191,7 +184,6 @@ def validate_auth_token(token: str):
 
 
 # ── Friend status helpers ─────────────────────────────────────────────────────
-# FIX #5: use string-keyed player_usernames dict instead of ws-object keys.
 def get_status(username: str) -> str:
     if username not in online_sockets:
         return "offline"
@@ -225,6 +217,23 @@ def generate_code():
         if code not in rooms:
             return code
 
+def make_room(ws_x, username_x):
+    """Create a new room. X is always the first joiner but turn is randomised."""
+    first_turn = random.choice(["X", "O"])
+    code = generate_code()
+    rooms[code] = {
+        "game":             GameEngine(),
+        "players":          [ws_x, None],
+        "turn":             first_turn,
+        "placed":           0,
+        "total_moves":      0,
+        "player_usernames": {"X": username_x, "O": None},
+        "symbols":          {ws_x: "X"},
+        "rematch_votes":    {},   # symbol -> True (request pending) / False (declined)
+        "first_turn":       first_turn,
+    }
+    return code
+
 async def broadcast_board(room):
     board = room["game"].board
     msg = json.dumps({"type": "board", "board": board, "turn": room["turn"]})
@@ -240,8 +249,14 @@ async def broadcast(room, payload):
             try: await p.send(msg)
             except Exception: pass
 
+async def safe_send(ws, payload):
+    try:
+        await ws.send(json.dumps(payload) if not isinstance(payload, str) else payload)
+    except Exception:
+        pass
 
-# FIX #6: disconnect cleanup runs as a background task, not blocking the handler.
+
+# ── Room cleanup ──────────────────────────────────────────────────────────────
 async def _room_cleanup_task(code: str, slot: int):
     await asyncio.sleep(60)
     if code not in rooms:
@@ -251,6 +266,150 @@ async def _room_cleanup_task(code: str, slot: int):
         await save_game(None, None, room.get("total_moves", 0), abandoned=True)
         del rooms[code]
         print(f"Room {code} cleaned up after 60s timeout")
+
+
+# ── Shared social message handler ─────────────────────────────────────────────
+# Returns True if the message was handled as a social/meta action,
+# False if it should be treated as a game move.
+# `out` dict keys set: code, player_symbol, session_token (mutated in place for join/host/rejoin)
+async def handle_social(websocket, username, parsed, state):
+    """Handle non-game actions. Mutates `state` dict for host/join/rejoin.
+    Returns True if handled, False if caller should treat as game move."""
+    a = parsed.get("action") if isinstance(parsed, dict) else None
+    if not a:
+        return False
+
+    # ── search_user ──────────────────────────────────────────────────────────
+    if a == "search_user":
+        query = (parsed.get("username") or "").strip()
+        if not query or not username:
+            await safe_send(websocket, {"type": "search_user_result", "found": False})
+            return True
+        found = query in users and query != username
+        await safe_send(websocket, {"type": "search_user_result", "found": found, "username": query if found else ""})
+        return True
+
+    # ── add_friend ───────────────────────────────────────────────────────────
+    if a == "add_friend":
+        if not username:
+            await safe_send(websocket, {"type": "add_friend_result", "success": False, "message": "Not logged in."})
+            return True
+        friend_name = (parsed.get("username") or "").strip()
+        if not friend_name:
+            await safe_send(websocket, {"type": "add_friend_result", "success": False, "message": "Enter a username."})
+            return True
+        if friend_name == username:
+            await safe_send(websocket, {"type": "add_friend_result", "success": False, "message": "That's you!"})
+            return True
+        if friend_name not in users:
+            await safe_send(websocket, {"type": "add_friend_result", "success": False, "message": "User not found."})
+            return True
+        udata = users[username]
+        if friend_name in udata.get("friends", []):
+            await safe_send(websocket, {"type": "add_friend_result", "success": False, "message": "Already friends."})
+            return True
+        udata.setdefault("friends", []).append(friend_name)
+        save_users()
+        status = get_status(friend_name)
+        await safe_send(websocket, {"type": "add_friend_result", "success": True, "friend": friend_name, "status": status})
+        return True
+
+    # ── remove_friend ────────────────────────────────────────────────────────
+    if a == "remove_friend":
+        if not username:
+            return True
+        friend_name = (parsed.get("username") or "").strip()
+        udata = users.get(username, {})
+        udata["friends"] = [f for f in udata.get("friends", []) if f != friend_name]
+        save_users()
+        await safe_send(websocket, {"type": "remove_friend_result", "success": True, "friend": friend_name})
+        return True
+
+    # ── send_invite ──────────────────────────────────────────────────────────
+    if a == "send_invite":
+        if not username:
+            return True
+        target = parsed.get("to", "")
+        target_ws = online_sockets.get(target)
+        if not target_ws:
+            await safe_send(websocket, {"type": "invite_result", "success": False, "message": f"{target} is offline."})
+            return True
+        try:
+            await target_ws.send(json.dumps({"type": "incoming_invite", "from": username}))
+            await safe_send(websocket, {"type": "invite_result", "success": True, "to": target})
+        except Exception:
+            await safe_send(websocket, {"type": "invite_result", "success": False, "message": f"Could not reach {target}."})
+        return True
+
+    # ── accept_invite — server auto-creates room and connects both players ───
+    if a == "accept_invite":
+        if not username:
+            return True
+        inviter = parsed.get("from", "")
+        inviter_ws = online_sockets.get(inviter)
+        if not inviter_ws:
+            await safe_send(websocket, {"type": "error", "message": f"{inviter} went offline."})
+            return True
+
+        # Build room; inviter = X, accepter = O
+        code = generate_code()
+        first_turn = random.choice(["X", "O"])
+        rooms[code] = {
+            "game":             GameEngine(),
+            "players":          [inviter_ws, websocket],
+            "turn":             first_turn,
+            "placed":           0,
+            "total_moves":      0,
+            "player_usernames": {"X": inviter, "O": username},
+            "symbols":          {inviter_ws: "X", websocket: "O"},
+            "rematch_votes":    {},
+            "first_turn":       first_turn,
+        }
+        tok_x = create_session("X", code, inviter)
+        tok_o = create_session("O", code, username)
+
+        # Tell inviter they're X
+        try:
+            await inviter_ws.send(json.dumps({
+                "type": "game_ready", "code": code,
+                "symbol": "X", "session_token": tok_x,
+                "opponent": username, "first_turn": first_turn
+            }))
+        except Exception:
+            pass
+
+        # Tell accepter they're O — mutate caller's state
+        state["code"]          = code
+        state["player_symbol"] = "O"
+        state["session_token"] = tok_o
+        await safe_send(websocket, {
+            "type": "game_ready", "code": code,
+            "symbol": "O", "session_token": tok_o,
+            "opponent": inviter, "first_turn": first_turn
+        })
+
+        await broadcast(rooms[code], {"type": "start"})
+        await broadcast_board(rooms[code])
+
+        if inviter in online_sockets:
+            await notify_friends_of_status_change(inviter)
+        await notify_friends_of_status_change(username)
+        return True
+
+    # ── decline_invite ───────────────────────────────────────────────────────
+    if a == "decline_invite":
+        if not username:
+            return True
+        inviter = parsed.get("from", "")
+        inviter_ws = online_sockets.get(inviter)
+        if inviter_ws:
+            try:
+                await inviter_ws.send(json.dumps({"type": "invite_declined", "by": username}))
+            except Exception:
+                pass
+        return True
+
+    return False  # not a social message
 
 
 # ── WebSocket handler ─────────────────────────────────────────────────────────
@@ -286,7 +445,7 @@ async def handler(websocket):
             auth_token = create_auth_token(uname)
             username   = uname
             online_sockets[username] = websocket
-            await websocket.send(json.dumps({"type": "registered", "username": uname, "auth_token": auth_token}))
+            await websocket.send(json.dumps({"type": "registered", "username": uname, "auth_token": auth_token, "friends": [], "statuses": {}}))
             await notify_friends_of_status_change(username)
             print(f"New user registered: {uname}")
 
@@ -301,7 +460,6 @@ async def handler(websocket):
                 if ':' in stored:
                     authenticated = verify_password(pwd, stored)
                 else:
-                    # migrate legacy plain-sha256 record on first login
                     authenticated = _try_migrate_legacy(uname, pwd)
             if not authenticated:
                 await websocket.send(json.dumps({"type": "error", "message": "Invalid username or password."}))
@@ -331,7 +489,6 @@ async def handler(websocket):
             udata    = users[username]
             friends  = udata.get("friends", [])
             statuses = {f: get_status(f) for f in friends}
-            # FIX #11: include active game info so client can auto-rejoin
             active_game = None
             for t, s in sessions.items():
                 if s.get("username") == username and s["expires"] > time.time() and s["room_code"] in rooms:
@@ -347,20 +504,8 @@ async def handler(websocket):
             print(f"User auto-logged-in: {uname}")
 
         # ── HOST ─────────────────────────────────────────────────────────────
-        # FIX #1: removed the early `return` that killed the host's connection.
-        # FIX #5: room uses player_usernames keyed by symbol string, not ws object.
         elif action == "host":
-            code  = generate_code()
-            rooms[code] = {
-                "game":             GameEngine(),
-                "players":          [websocket, None],
-                "turn":             "X",
-                "placed":           0,
-                "total_moves":      0,
-                "player_usernames": {"X": username, "O": None},
-                "symbols":          {websocket: "X"},
-                "rematch_votes":    set(),
-            }
+            code = make_room(websocket, username)
             player_symbol = "X"
             session_token = create_session("X", code, username)
             if username:
@@ -372,7 +517,6 @@ async def handler(websocket):
             }))
             if username:
                 await notify_friends_of_status_change(username)
-            # NOTE: intentionally NO `return` here — fall through to game loop
 
         # ── JOIN ─────────────────────────────────────────────────────────────
         elif action == "join":
@@ -395,7 +539,7 @@ async def handler(websocket):
             }))
             for p in room["players"]:
                 if p:
-                    await p.send(json.dumps({"type": "start"}))
+                    await p.send(json.dumps({"type": "start", "first_turn": room["turn"]}))
             await broadcast_board(room)
             if username:
                 await notify_friends_of_status_change(username)
@@ -425,11 +569,14 @@ async def handler(websocket):
             await websocket.send(json.dumps({"type": "rejoined", "symbol": player_symbol, "code": code}))
             await broadcast_board(room)
 
-        # ── LOBBY LOOP (for register/login/auto_login) ────────────────────────
-        # Players who logged in but haven't joined a room yet need to handle
-        # social messages (add_friend, invites, host, join) here.
+        else:
+            await websocket.send(json.dumps({"type": "error", "message": "Invalid action."}))
+            return
+
+        # ── LOBBY LOOP — for logged-in users not yet in a room ───────────────
         if code is None and username is not None:
-            while code is None:
+            state = {"code": None, "player_symbol": None, "session_token": None}
+            while state["code"] is None:
                 raw2 = await websocket.recv()
                 try:
                     p2 = json.loads(raw2)
@@ -439,123 +586,35 @@ async def handler(websocket):
                     continue
                 a2 = p2.get("action")
 
-                if a2 == "add_friend":
-                    if not username:
-                        await websocket.send(json.dumps({"type": "error", "message": "Not logged in."}))
-                        continue
-                    friend_name = (p2.get("username") or "").strip()
-                    if not friend_name:
-                        await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "Enter a username."}))
-                        continue
-                    if friend_name == username:
-                        await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "That's you!"}))
-                        continue
-                    if friend_name not in users:
-                        await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "User not found."}))
-                        continue
-                    udata2 = users[username]
-                    if friend_name in udata2.get("friends", []):
-                        await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "Already friends."}))
-                        continue
-                    udata2.setdefault("friends", []).append(friend_name)
-                    save_users()
-                    status2 = get_status(friend_name)
-                    await websocket.send(json.dumps({"type": "add_friend_result", "success": True, "friend": friend_name, "status": status2}))
+                # Delegate social actions
+                if await handle_social(websocket, username, p2, state):
+                    if state["code"]:  # accept_invite set a code — enter game
+                        code          = state["code"]
+                        player_symbol = state["player_symbol"]
+                        session_token = state["session_token"]
                     continue
 
-                if a2 == "remove_friend":
-                    if not username:
-                        continue
-                    friend_name = (p2.get("username") or "").strip()
-                    udata2 = users.get(username, {})
-                    udata2["friends"] = [f for f in udata2.get("friends", []) if f != friend_name]
-                    save_users()
-                    await websocket.send(json.dumps({"type": "remove_friend_result", "success": True, "friend": friend_name}))
-                    continue
-
-                if a2 == "send_invite":
-                    if not username:
-                        continue
-                    target = p2.get("to", "")
-                    target_ws = online_sockets.get(target)
-                    if not target_ws:
-                        await websocket.send(json.dumps({"type": "invite_result", "success": False, "message": f"{target} is offline."}))
-                        continue
-                    try:
-                        await target_ws.send(json.dumps({"type": "incoming_invite", "from": username}))
-                        await websocket.send(json.dumps({"type": "invite_result", "success": True, "to": target}))
-                    except Exception:
-                        await websocket.send(json.dumps({"type": "invite_result", "success": False, "message": f"Could not reach {target}."}))
-                    continue
-
-                if a2 == "accept_invite":
-                    if not username:
-                        continue
-                    inviter = p2.get("from", "")
-                    inviter_ws = online_sockets.get(inviter)
-                    if inviter_ws:
-                        try:
-                            await inviter_ws.send(json.dumps({"type": "invite_accepted", "by": username}))
-                        except Exception:
-                            pass
-                    continue
-
-                if a2 == "decline_invite":
-                    if not username:
-                        continue
-                    inviter = p2.get("from", "")
-                    inviter_ws = online_sockets.get(inviter)
-                    if inviter_ws:
-                        try:
-                            await inviter_ws.send(json.dumps({"type": "invite_declined", "by": username}))
-                        except Exception:
-                            pass
-                    continue
-
-                if a2 == "send_room_code":
-                    if not username:
-                        continue
-                    target    = p2.get("to", "")
-                    room_code = p2.get("code", "")
-                    target_ws = online_sockets.get(target)
-                    if target_ws and room_code:
-                        try:
-                            await target_ws.send(json.dumps({"type": "room_code_for_invitee", "code": room_code}))
-                        except Exception:
-                            pass
-                    continue
-
+                # host / join / rejoin from lobby
                 if a2 == "host":
-                    code  = generate_code()
-                    rooms[code] = {
-                        "game":             GameEngine(),
-                        "players":          [websocket, None],
-                        "turn":             "X",
-                        "placed":           0,
-                        "total_moves":      0,
-                        "player_usernames": {"X": username, "O": None},
-                        "symbols":          {websocket: "X"},
-                        "rematch_votes":    set(),
-                    }
+                    code = make_room(websocket, username)
                     player_symbol = "X"
                     session_token = create_session("X", code, username)
                     if username:
                         online_sockets[username] = websocket
-                    print(f"Room {code} created by {username or 'anonymous'} (from lobby loop)")
-                    await websocket.send(json.dumps({"type": "hosted", "code": code, "symbol": "X", "session_token": session_token}))
+                    print(f"Room {code} created by {username} (lobby loop)")
+                    await safe_send(websocket, {"type": "hosted", "code": code, "symbol": "X", "session_token": session_token})
                     if username:
                         await notify_friends_of_status_change(username)
-                    # code is now set — exit lobby loop and fall into game loop
                     break
 
                 if a2 == "join":
                     jcode = p2.get("code", "").strip()
                     if jcode not in rooms:
-                        await websocket.send(json.dumps({"type": "error", "message": "Room not found."}))
+                        await safe_send(websocket, {"type": "error", "message": "Room not found."})
                         continue
                     jroom = rooms[jcode]
                     if jroom["players"][1] is not None:
-                        await websocket.send(json.dumps({"type": "error", "message": "Room is already full."}))
+                        await safe_send(websocket, {"type": "error", "message": "Room is already full."})
                         continue
                     code = jcode
                     jroom["players"][1]              = websocket
@@ -563,29 +622,28 @@ async def handler(websocket):
                     jroom["player_usernames"]["O"]   = username
                     player_symbol = "O"
                     session_token = create_session("O", code, username)
-                    print(f"Player O ({username or 'anonymous'}) joined room {code} (from lobby loop)")
-                    await websocket.send(json.dumps({"type": "joined", "symbol": "O", "session_token": session_token}))
+                    print(f"Player O ({username}) joined room {code} (lobby loop)")
+                    await safe_send(websocket, {"type": "joined", "symbol": "O", "session_token": session_token})
                     for p in jroom["players"]:
                         if p:
-                            await p.send(json.dumps({"type": "start"}))
+                            await p.send(json.dumps({"type": "start", "first_turn": jroom["turn"]}))
                     await broadcast_board(jroom)
                     if username:
                         await notify_friends_of_status_change(username)
-                    break  # code is set — exit lobby loop
+                    break
 
                 if a2 == "rejoin":
                     token2 = p2.get("token", "")
                     sess2  = validate_session(token2)
                     if not sess2:
-                        await websocket.send(json.dumps({"type": "error", "message": "Session expired."}))
+                        await safe_send(websocket, {"type": "error", "message": "Session expired."})
                         continue
                     code          = sess2["room_code"]
                     player_symbol = sess2["symbol"]
                     username      = sess2.get("username")
                     if code not in rooms:
-                        await websocket.send(json.dumps({"type": "error", "message": "Room no longer exists."}))
-                        code = None
-                        continue
+                        await safe_send(websocket, {"type": "error", "message": "Room no longer exists."})
+                        code = None; continue
                     rroom = rooms[code]
                     slot = 0 if player_symbol == "X" else 1
                     rroom["players"][slot]              = websocket
@@ -594,10 +652,10 @@ async def handler(websocket):
                     if username:
                         online_sockets[username] = websocket
                     session_token = token2
-                    print(f"Player {player_symbol} ({username}) rejoined room {code} (from lobby loop)")
-                    await websocket.send(json.dumps({"type": "rejoined", "symbol": player_symbol, "code": code}))
+                    print(f"Player {player_symbol} ({username}) rejoined room {code} (lobby loop)")
+                    await safe_send(websocket, {"type": "rejoined", "symbol": player_symbol, "code": code})
                     await broadcast_board(rroom)
-                    break  # code is set — exit lobby loop
+                    break
 
         # ── re-fetch room ─────────────────────────────────────────────────────
         room = rooms.get(code)
@@ -613,111 +671,44 @@ async def handler(websocket):
                 if isinstance(parsed, dict):
                     inner_action = parsed.get("action")
 
-                    if inner_action == "add_friend":
-                        if not username:
-                            await websocket.send(json.dumps({"type": "error", "message": "Not logged in."}))
-                            continue
-                        friend_name = (parsed.get("username") or "").strip()
-                        if not friend_name:
-                            await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "Enter a username."}))
-                            continue
-                        if friend_name == username:
-                            await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "That's you!"}))
-                            continue
-                        if friend_name not in users:
-                            await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "User not found."}))
-                            continue
-                        udata = users[username]
-                        if friend_name in udata.get("friends", []):
-                            await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "Already friends."}))
-                            continue
-                        udata.setdefault("friends", []).append(friend_name)
-                        save_users()
-                        status = get_status(friend_name)
-                        await websocket.send(json.dumps({
-                            "type": "add_friend_result", "success": True,
-                            "friend": friend_name, "status": status
-                        }))
+                    # Handle social actions (add_friend, invites, search, etc.)
+                    state = {"code": None, "player_symbol": None, "session_token": None}
+                    if await handle_social(websocket, username, parsed, state):
                         continue
 
-                    if inner_action == "remove_friend":
-                        if not username:
-                            continue
-                        friend_name = (parsed.get("username") or "").strip()
-                        udata = users.get(username, {})
-                        udata["friends"] = [f for f in udata.get("friends", []) if f != friend_name]
-                        save_users()
-                        await websocket.send(json.dumps({"type": "remove_friend_result", "success": True, "friend": friend_name}))
-                        continue
-
-                    if inner_action == "send_invite":
-                        if not username:
-                            continue
-                        target = parsed.get("to", "")
-                        target_ws = online_sockets.get(target)
-                        if not target_ws:
-                            await websocket.send(json.dumps({"type": "invite_result", "success": False, "message": f"{target} is offline."}))
-                            continue
-                        try:
-                            await target_ws.send(json.dumps({"type": "incoming_invite", "from": username}))
-                            await websocket.send(json.dumps({"type": "invite_result", "success": True, "to": target}))
-                        except Exception:
-                            await websocket.send(json.dumps({"type": "invite_result", "success": False, "message": f"Could not reach {target}."}))
-                        continue
-
-                    if inner_action == "accept_invite":
-                        if not username:
-                            continue
-                        inviter = parsed.get("from", "")
-                        inviter_ws = online_sockets.get(inviter)
-                        if inviter_ws:
-                            try:
-                                # FIX #3: tell the inviter who accepted so they can host
-                                # and push the room code back to the accepter.
-                                await inviter_ws.send(json.dumps({"type": "invite_accepted", "by": username}))
-                            except Exception:
-                                pass
-                        continue
-
-                    # FIX #3: inviter relays the room code to the accepter after hosting
-                    if inner_action == "send_room_code":
-                        if not username:
-                            continue
-                        target    = parsed.get("to", "")
-                        room_code = parsed.get("code", "")
-                        target_ws = online_sockets.get(target)
-                        if target_ws and room_code:
-                            try:
-                                await target_ws.send(json.dumps({"type": "room_code_for_invitee", "code": room_code}))
-                            except Exception:
-                                pass
-                        continue
-
-                    if inner_action == "decline_invite":
-                        if not username:
-                            continue
-                        inviter = parsed.get("from", "")
-                        inviter_ws = online_sockets.get(inviter)
-                        if inviter_ws:
-                            try:
-                                await inviter_ws.send(json.dumps({"type": "invite_declined", "by": username}))
-                            except Exception:
-                                pass
-                        continue
-
-                    if inner_action == "rematch":
+                    # ── REMATCH REQUEST ──────────────────────────────────────
+                    if inner_action == "rematch_request":
                         if room is None: continue
-                        room["rematch_votes"].add(player_symbol)
-                        if len(room["rematch_votes"]) == 2:
-                            room["game"].reset()
-                            room["placed"]      = 0
-                            room["total_moves"] = 0
-                            room["turn"]        = "X"
-                            room["rematch_votes"] = set()
-                            await broadcast(room, {"type": "rematch_start"})
-                            await broadcast_board(room)
-                        else:
-                            await broadcast(room, {"type": "rematch_waiting"})
+                        # Tell the opponent there's a rematch request
+                        opponent_slot = 1 if player_symbol == "X" else 0
+                        opp_ws = room["players"][opponent_slot]
+                        if opp_ws:
+                            await safe_send(opp_ws, {"type": "rematch_request", "from": player_symbol})
+                        room["rematch_votes"][player_symbol] = "pending"
+                        continue
+
+                    # ── REMATCH ACCEPT ───────────────────────────────────────
+                    if inner_action == "rematch_accept":
+                        if room is None: continue
+                        first_turn = random.choice(["X", "O"])
+                        room["game"].reset()
+                        room["placed"]        = 0
+                        room["total_moves"]   = 0
+                        room["turn"]          = first_turn
+                        room["first_turn"]    = first_turn
+                        room["rematch_votes"] = {}
+                        await broadcast(room, {"type": "rematch_start", "first_turn": first_turn})
+                        await broadcast_board(room)
+                        continue
+
+                    # ── REMATCH DECLINE ──────────────────────────────────────
+                    if inner_action == "rematch_decline":
+                        if room is None: continue
+                        opponent_slot = 1 if player_symbol == "X" else 0
+                        opp_ws = room["players"][opponent_slot]
+                        if opp_ws:
+                            await safe_send(opp_ws, {"type": "rematch_declined", "by": player_symbol})
+                        room["rematch_votes"] = {}
                         continue
 
             except (ValueError, TypeError):
@@ -787,7 +778,6 @@ async def handler(websocket):
                         }))
                     except Exception:
                         pass
-            # FIX #6: background task — handler exits immediately
             asyncio.create_task(_room_cleanup_task(code, slot))
 
     except asyncio.TimeoutError:
@@ -811,7 +801,6 @@ async def main():
     load_users()
     await init_db()
 
-    # FIX #14: no hardcoded PORT — Render injects it automatically
     port = int(os.environ.get("PORT", 5000))
 
     async def websocket_handler(request):
@@ -820,7 +809,6 @@ async def main():
 
         class WSAdapter:
             async def recv(self):
-                # FIX #10: guard against CLOSE/PING/ERROR message types
                 msg = await ws.receive()
                 if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
                     raise websockets.exceptions.ConnectionClosed(None, None)
@@ -853,8 +841,6 @@ async def main():
     site = web.TCPSite(runner, '0.0.0.0', port)
     await site.start()
     print(f"Morix server running on port {port}")
-    print(f"  WebSocket:   ws://0.0.0.0:{port}/ws")
-    print(f"  Leaderboard: http://0.0.0.0:{port}/api/leaderboard")
 
     async def cleanup_loop():
         while True:

@@ -117,6 +117,15 @@ svg .selected{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 6px #fff)}
 .add-friend-row button{background:var(--gold);color:#1a1a2e;border:none;border-radius:var(--radius-sm);padding:8px 12px;cursor:pointer;font-weight:700;font-size:0.9rem}
 .add-friend-row button:hover{opacity:0.85}
 #add-friend-error{color:var(--red);font-size:0.74rem;min-height:14px;margin-top:4px}
+
+/* search result preview */
+#friend-search-result{margin-top:8px;display:none}
+.search-result-card{display:flex;align-items:center;gap:8px;background:#0d0d1a;border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 10px}
+.search-result-name{flex:1;font-size:0.84rem;font-weight:600;color:var(--text)}
+.search-add-btn{background:var(--gold);color:#1a1a2e;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-weight:700;font-size:0.82rem}
+.search-add-btn:hover{opacity:0.85}
+.search-not-found{color:var(--muted);font-size:0.78rem;padding:6px 2px}
+
 .friends-list{flex:1;overflow-y:auto;padding:8px}
 .friends-group-label{font-size:0.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:8px 6px 4px;font-weight:600}
 .friend-item{display:flex;align-items:center;padding:8px;border-radius:var(--radius-sm);gap:9px;margin-bottom:2px;transition:background 0.15s;position:relative}
@@ -142,6 +151,10 @@ svg .selected{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 6px #fff)}
 #incoming-banner{display:none;background:var(--surface2);border:1px solid var(--gold);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:10px;font-size:0.85rem;width:100%;max-width:420px;align-items:center;justify-content:space-between;gap:10px}
 #incoming-banner.show{display:flex}
 .incoming-text{color:var(--text)}.incoming-text strong{color:var(--gold)}
+
+/* rematch request banner */
+#rematch-banner{display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid var(--gold);border-radius:12px;padding:14px 20px;font-size:0.88rem;z-index:250;box-shadow:0 4px 24px #00000088;align-items:center;gap:14px;white-space:nowrap}
+#rematch-banner.show{display:flex}
 
 @media(max-width:720px){#main-screen{flex-direction:column}.friends-col{width:100%;min-height:auto;border-left:none;border-top:1px solid var(--border)}}
 </style>
@@ -273,13 +286,14 @@ svg .selected{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 6px #fff)}
     <div class="friends-header">
       <h3>👥 Friends</h3>
       <div class="add-friend-row">
-        <input type="text" id="friend-input" placeholder="Add by username..." maxlength="32"/>
-        <button onclick="addFriend()">+</button>
+        <input type="text" id="friend-input" placeholder="Search by username..." maxlength="32"/>
+        <button onclick="searchUser()">🔍</button>
       </div>
       <div id="add-friend-error"></div>
+      <div id="friend-search-result"></div>
     </div>
     <div class="friends-list" id="friends-list">
-      <div class="no-friends">Add friends by username.<br/>They can be on any device!</div>
+      <div class="no-friends">Search for a friend by username.<br/>They can be on <strong>any device</strong>!</div>
     </div>
   </div>
 </div>
@@ -292,6 +306,13 @@ svg .selected{stroke:#fff;stroke-width:4;filter:drop-shadow(0 0 6px #fff)}
     <button class="btn btn-success" id="overlay-rematch" onclick="requestRematch()">🔄 Rematch</button>
     <button class="btn btn-outline" onclick="goToLobby()">🏠 Main Menu</button>
   </div>
+</div>
+
+<!-- REMATCH REQUEST BANNER -->
+<div id="rematch-banner">
+  <span>🔄 <strong id="rematch-from"></strong> wants a rematch!</span>
+  <button class="btn btn-success btn-sm" onclick="acceptRematch()">Accept</button>
+  <button class="btn btn-danger btn-sm" onclick="declineRematch()">Decline</button>
 </div>
 
 <script>
@@ -307,7 +328,7 @@ const wsHost = (location.hostname === 'localhost' || location.hostname === '127.
 // ══════════════════════════════════════════════════════════
 let socket        = null
 let currentUser   = null
-let authToken     = null          // server-issued auth token
+let authToken     = null
 let playerSymbol  = null
 let selected      = null
 let boardState    = Array(9).fill(null)
@@ -316,9 +337,10 @@ let opponentName  = 'Opponent'
 let reconnectAttempts = 0
 const MAX_RECONNECTS  = 5
 
-// friends state: name -> status
 let friendStatuses = {}
-// local match history (per user, stored in localStorage)
+let pendingInviteFrom  = null
+let pendingRematchFrom = null   // symbol of person who sent rematch request
+
 function matchKey(u) { return `morix_matches_${u}` }
 function loadMatches() {
   try { return JSON.parse(localStorage.getItem(matchKey(currentUser))) || [] } catch { return [] }
@@ -344,7 +366,7 @@ function initials(n) { return n.slice(0,2).toUpperCase() }
 function setLoginError(m) { document.getElementById('login-error').textContent = m }
 function showLobbyError(m) { document.getElementById('lobby-error').textContent = m }
 function showError(m) { const el=document.getElementById('error-msg'); el.textContent=m; el.style.display=m?'block':'none' }
-function showOverlay(title,msg,showRematch=true) {
+function showOverlay(title, msg, showRematch=true) {
   document.getElementById('overlay-title').textContent = title
   document.getElementById('overlay-msg').textContent   = msg
   document.getElementById('overlay-rematch').style.display = showRematch?'inline-block':'none'
@@ -356,35 +378,56 @@ function toggleForm(w) {
   document.getElementById('form-register').style.display = w==='register'?'':'none'
   setLoginError('')
 }
-function showToast(msg) {
+function showToast(msg, dur=3000) {
   const t = document.createElement('div'); t.className='toast'; t.textContent=msg
-  document.body.appendChild(t); setTimeout(()=>t.remove(), 3000)
+  document.body.appendChild(t); setTimeout(()=>t.remove(), dur)
 }
 function goToLobby() {
-  hideOverlay(); clearGameSession()
+  hideOverlay(); clearGameSession(); hideRematchBanner()
   document.getElementById('game').style.display    = 'none'
   document.getElementById('waiting').style.display = 'none'
   document.getElementById('lobby').style.display   = ''
+  document.getElementById('rematch-btn').style.display = 'none'
+  document.getElementById('rematch-btn').disabled  = false
   renderMatchHistory()
+}
+function setBadges(mySymbol) {
+  if (mySymbol === 'X') {
+    document.getElementById('badge-x').textContent = '🔵 You (X)'
+    document.getElementById('badge-o').textContent = '🔴 Opponent (O)'
+  } else {
+    document.getElementById('badge-x').textContent = '🔵 Opponent (X)'
+    document.getElementById('badge-o').textContent = '🔴 You (O)'
+  }
+}
+function enterGame(symbol, code, token, opponent) {
+  playerSymbol = symbol
+  gameCode     = code
+  opponentName = opponent || 'Opponent'
+  saveGameSession(token, code, symbol)
+  setBadges(symbol)
+  document.getElementById('lobby').style.display   = 'none'
+  document.getElementById('waiting').style.display = 'none'
+  document.getElementById('game').style.display    = 'flex'
+  document.getElementById('roomCodeSmall').textContent = `Room: ${code}`
+  showError('')
 }
 
 // ══════════════════════════════════════════════════════════
-//  WEBSOCKET — single persistent connection
+//  WEBSOCKET
 // ══════════════════════════════════════════════════════════
 function openSocket(onopen) {
   if (socket && socket.readyState <= 1) { if(onopen) onopen(); return }
   socket = new WebSocket(wsHost)
   socket.onopen    = onopen || null
   socket.onmessage = onMessage
-  socket.onerror   = () => setLoginError('Cannot connect to server. Is it running?')
+  socket.onerror   = () => setLoginError('Cannot connect to server.')
   socket.onclose   = onSocketClose
 }
-
 function sendMsg(obj) {
   if (socket && socket.readyState === WebSocket.OPEN)
     socket.send(JSON.stringify(obj))
 }
-
 function onSocketClose() {
   if (reconnectAttempts >= MAX_RECONNECTS) { showError('Connection lost. Please refresh.'); return }
   const token = sessionStorage.getItem('morix_game_token')
@@ -405,7 +448,6 @@ function doLogin() {
   setLoginError('Connecting...')
   openSocket(() => sendMsg({ action:'login', username:u, password:p }))
 }
-
 function doRegister() {
   const u  = document.getElementById('reg-user').value.trim()
   const p  = document.getElementById('reg-pass').value
@@ -417,40 +459,31 @@ function doRegister() {
   setLoginError('Connecting...')
   openSocket(() => sendMsg({ action:'register', username:u, password:p }))
 }
-
 function enterApp(username, token, friends, statuses) {
   currentUser = username
   authToken   = token
   sessionStorage.setItem('morix_auth', token)
   sessionStorage.setItem('morix_user', username)
-
   document.getElementById('login-screen').classList.remove('active')
   document.getElementById('main-screen').classList.add('active')
   const col = avColor(username)
   const av  = document.getElementById('user-avatar')
   av.textContent = initials(username); av.style.background=col; av.style.color='#1a1a2e'
   document.getElementById('user-display-name').textContent = username
-
-  // seed friends from server data
   friendStatuses = {}
   ;(friends||[]).forEach(f => { friendStatuses[f] = (statuses||{})[f] || 'offline' })
   renderFriends()
   renderMatchHistory()
 }
-
 function doLogout() {
   currentUser = null; authToken = null
   sessionStorage.clear()
   if (socket) { try { socket.close() } catch(_) {} socket = null }
   location.reload()
 }
-
-// auto-login on page load
 window.addEventListener('load', () => {
   const savedAuth = sessionStorage.getItem('morix_auth')
-  const savedUser = sessionStorage.getItem('morix_user')
-  if (savedAuth && savedUser) {
-    // FIX #11: server auto_login response now includes active_game; handled in onMessage
+  if (savedAuth) {
     openSocket(() => sendMsg({ action:'auto_login', auth_token: savedAuth }))
     return
   }
@@ -459,27 +492,50 @@ window.addEventListener('load', () => {
 })
 
 // ══════════════════════════════════════════════════════════
-//  FRIENDS
+//  FRIENDS — search-first UX
 // ══════════════════════════════════════════════════════════
-function addFriend() {
+let searchDebounce = null
+function searchUser() {
   const inp  = document.getElementById('friend-input')
   const name = inp.value.trim()
   const errEl = document.getElementById('add-friend-error')
+  const resEl = document.getElementById('friend-search-result')
   errEl.textContent = ''
-  if (!name) { errEl.textContent='Enter a username.'; return }
-  sendMsg({ action:'add_friend', username:name })
-  inp.value = ''
+  resEl.style.display = 'none'
+  resEl.innerHTML = ''
+  if (!name) { errEl.textContent = 'Enter a username to search.'; return }
+  sendMsg({ action: 'search_user', username: name })
 }
 
+// Also search live as user types (debounced)
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('friend-input')
+  if (inp) {
+    inp.addEventListener('input', () => {
+      clearTimeout(searchDebounce)
+      const v = inp.value.trim()
+      if (v.length >= 3) {
+        searchDebounce = setTimeout(() => sendMsg({ action:'search_user', username:v }), 400)
+      } else {
+        document.getElementById('friend-search-result').style.display = 'none'
+      }
+    })
+  }
+})
+
+function confirmAddFriend(name) {
+  sendMsg({ action:'add_friend', username: name })
+  document.getElementById('friend-input').value = ''
+  document.getElementById('friend-search-result').style.display = 'none'
+}
 function removeFriend(name) {
   sendMsg({ action:'remove_friend', username:name })
 }
-
 function renderFriends() {
   const list = document.getElementById('friends-list')
   const friends = Object.keys(friendStatuses)
   if (!friends.length) {
-    list.innerHTML = '<div class="no-friends">Add friends by username.<br/>They can be on <strong>any device</strong>!</div>'
+    list.innerHTML = '<div class="no-friends">Search for a friend by username above.<br/>They can be on <strong>any device</strong>!</div>'
     return
   }
   const online  = friends.filter(f => friendStatuses[f]==='online')
@@ -491,7 +547,6 @@ function renderFriends() {
   if (offline.length) html += `<div class="friends-group-label">Offline</div>`                    + offline.map(friendCard).join('')
   list.innerHTML = html
 }
-
 function friendCard(name) {
   const status = friendStatuses[name] || 'offline'
   const col = avColor(name)
@@ -512,26 +567,44 @@ function friendCard(name) {
 // ══════════════════════════════════════════════════════════
 //  INVITES
 // ══════════════════════════════════════════════════════════
-let pendingInviteFrom = null
-let pendingInvitee    = null   // set when we hosted for an invitee
-
 function sendInvite(friendName) {
   sendMsg({ action:'send_invite', to: friendName })
   showToast(`Invite sent to ${friendName}!`)
 }
-
 function acceptInvite() {
   document.getElementById('incoming-banner').classList.remove('show')
+  // Server will auto-create the room and push game_ready to both sides
   sendMsg({ action:'accept_invite', from: pendingInviteFrom })
-  showToast(`Invite accepted! Waiting for ${pendingInviteFrom} to host...`)
-  // The inviter receives invite_accepted -> they host -> server pushes room_code_for_invitee back to us
   pendingInviteFrom = null
 }
-
 function declineInvite() {
   document.getElementById('incoming-banner').classList.remove('show')
   sendMsg({ action:'decline_invite', from: pendingInviteFrom })
   pendingInviteFrom = null
+}
+
+// ══════════════════════════════════════════════════════════
+//  REMATCH
+// ══════════════════════════════════════════════════════════
+function requestRematch() {
+  sendMsg({ action:'rematch_request' })
+  document.getElementById('status').textContent = '🔄 Rematch requested...'
+  document.getElementById('rematch-btn').disabled = true
+  hideOverlay()
+  showToast('Rematch request sent!', 2000)
+}
+function acceptRematch() {
+  hideRematchBanner()
+  sendMsg({ action:'rematch_accept' })
+}
+function declineRematch() {
+  hideRematchBanner()
+  sendMsg({ action:'rematch_decline' })
+  pendingRematchFrom = null
+}
+function hideRematchBanner() {
+  document.getElementById('rematch-banner').classList.remove('show')
+  pendingRematchFrom = null
 }
 
 // ══════════════════════════════════════════════════════════
@@ -562,7 +635,6 @@ function clearGameSession() {
   sessionStorage.removeItem('morix_game_code')
   sessionStorage.removeItem('morix_game_symbol')
 }
-
 function hostGame() {
   showLobbyError('')
   if (!socket || socket.readyState !== WebSocket.OPEN) {
@@ -570,7 +642,6 @@ function hostGame() {
   }
   sendMsg({ action:'host' })
 }
-
 function joinGame() {
   showLobbyError('')
   const code = document.getElementById('joinCode').value.trim()
@@ -580,29 +651,16 @@ function joinGame() {
   }
   sendMsg({ action:'join', code })
 }
-
 function copyCode() {
   navigator.clipboard.writeText(gameCode).then(()=>{
     const b=document.querySelector('.copy-btn'); b.textContent='✅ Copied!'
     setTimeout(()=>b.textContent='📋 Copy Code',2000)
   })
 }
-
 function leaveGame() {
-  clearGameSession()
-  // FIX #12: return to lobby without a full page reload
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    goToLobby()
-  } else {
-    location.reload()
-  }
-}
-
-function requestRematch() {
-  sendMsg({ action:'rematch' })
-  document.getElementById('status').textContent = 'Rematch requested...'
-  document.getElementById('rematch-btn').disabled = true
-  hideOverlay()
+  clearGameSession(); hideRematchBanner()
+  if (socket && socket.readyState === WebSocket.OPEN) goToLobby()
+  else location.reload()
 }
 
 // ══════════════════════════════════════════════════════════
@@ -618,17 +676,13 @@ function onMessage(event) {
   // ── AUTH ──
   if (t==='registered' || t==='logged_in') {
     enterApp(data.username, data.auth_token, data.friends, data.statuses)
-    // FIX #11: if server reports an active game session, auto-rejoin it
     if (data.active_game) {
       const ag = data.active_game
-      sessionStorage.setItem('morix_game_token',  ag.session_token)
-      sessionStorage.setItem('morix_game_code',   ag.code)
-      sessionStorage.setItem('morix_game_symbol', ag.symbol)
+      saveGameSession(ag.session_token, ag.code, ag.symbol)
       sendMsg({ action:'rejoin', token: ag.session_token })
     }
     return
   }
-
   if (t==='error' && !currentUser) { setLoginError(data.message); return }
   if (t==='error') { showLobbyError(data.message); return }
 
@@ -637,11 +691,30 @@ function onMessage(event) {
     Object.assign(friendStatuses, data.statuses)
     renderFriends(); return
   }
+  if (t==='search_user_result') {
+    const resEl = document.getElementById('friend-search-result')
+    const errEl = document.getElementById('add-friend-error')
+    errEl.textContent = ''
+    if (data.found) {
+      const col = avColor(data.username)
+      resEl.style.display = 'block'
+      resEl.innerHTML = `<div class="search-result-card">
+        <div class="friend-avatar" style="background:${col};color:#1a1a2e;width:28px;height:28px;font-size:0.7rem">${initials(data.username)}</div>
+        <span class="search-result-name">${data.username}</span>
+        <button class="search-add-btn" onclick="confirmAddFriend('${data.username}')">+ Add</button>
+      </div>`
+    } else {
+      resEl.style.display = 'block'
+      resEl.innerHTML = `<div class="search-not-found">No user found with that username.</div>`
+    }
+    return
+  }
   if (t==='add_friend_result') {
     const errEl = document.getElementById('add-friend-error')
     if (data.success) {
       friendStatuses[data.friend] = data.status
-      renderFriends(); showToast(`${data.friend} added!`)
+      renderFriends(); showToast(`${data.friend} added as friend!`)
+      document.getElementById('friend-search-result').style.display = 'none'
     } else { errEl.textContent = data.message }
     return
   }
@@ -657,90 +730,110 @@ function onMessage(event) {
     document.getElementById('incoming-banner').classList.add('show')
     return
   }
-  if (t==='invite_accepted') {
-    showToast(`${data.by} accepted! Hosting a game for them...`)
-    hostGame()
-    // After hosting, send the room code to the accepter via invite_room_code message
-    // Server will deliver it; we do this once we receive the 'hosted' confirmation (see below)
-    pendingInvitee = data.by
+  if (t==='invite_declined') { showToast(`${data.by} declined your invite.`); return }
+
+  // ── GAME READY (from invite accept — server auto-created room) ──
+  if (t==='game_ready') {
+    const firstLabel = data.first_turn === playerSymbol ? 'You go first!' : `${data.opponent || 'Opponent'} goes first!`
+    enterGame(data.symbol, data.code, data.session_token, data.opponent)
+    document.getElementById('status').textContent = `Game starting! ${firstLabel}`
     return
   }
-  if (t==='invite_declined') { showToast(`${data.by} declined.`); return }
 
-  // ── GAME ──
+  // ── HOSTED (manual host) ──
   if (t==='hosted') {
     gameCode = data.code; playerSymbol = data.symbol
     saveGameSession(data.session_token, data.code, data.symbol)
+    setBadges(data.symbol)
     document.getElementById('displayCode').textContent = data.code
     document.getElementById('lobby').style.display   = 'none'
     document.getElementById('waiting').style.display = 'flex'
-    // FIX #3: if we hosted in response to an invite acceptance, push the code to the invitee
-    if (pendingInvitee) {
-      sendMsg({ action:'send_room_code', to: pendingInvitee, code: data.code })
-      pendingInvitee = null
-    }
     return
   }
-  if (t==='room_code_for_invitee') {
-    // We were invited; the host just sent us their room code — auto-join
-    document.getElementById('joinCode').value = data.code
-    joinGame()
-    return
-  }
+
+  // ── JOINED (manual join) ──
   if (t==='joined') {
     playerSymbol = data.symbol
     saveGameSession(data.session_token, document.getElementById('joinCode').value.trim(), data.symbol)
-    document.getElementById('badge-x').textContent = '🔵 Opponent (X)'
-    document.getElementById('badge-o').textContent = '🔴 You (O)'
+    setBadges(data.symbol)
     return
   }
+
+  // ── REJOINED ──
   if (t==='rejoined') {
     playerSymbol = data.symbol; gameCode = data.code
+    setBadges(data.symbol)
     document.getElementById('lobby').style.display   = 'none'
     document.getElementById('waiting').style.display = 'none'
     document.getElementById('game').style.display    = 'flex'
     document.getElementById('status').textContent    = 'Reconnected!'
-    if (playerSymbol==='O') {
-      document.getElementById('badge-x').textContent='🔵 Opponent (X)'
-      document.getElementById('badge-o').textContent='🔴 You (O)'
-    }
     return
   }
+
+  // ── START ──
   if (t==='start') {
     document.getElementById('lobby').style.display   = 'none'
     document.getElementById('waiting').style.display = 'none'
     document.getElementById('game').style.display    = 'flex'
     document.getElementById('roomCodeSmall').textContent = `Room: ${gameCode||document.getElementById('joinCode').value}`
-    document.getElementById('status').textContent = 'Game started!'
+    const firstLabel = data.first_turn ? (data.first_turn===playerSymbol ? 'You go first!' : 'Opponent goes first!') : ''
+    document.getElementById('status').textContent = `Game started! ${firstLabel}`
     return
   }
+
+  // ── BOARD ──
   if (t==='board') {
     boardState = data.board
     updateTurnBadge(data.turn)
-    document.getElementById('status').textContent = data.turn===playerSymbol ? 'Your turn' : "Opponent's turn..."
+    document.getElementById('status').textContent = data.turn===playerSymbol ? '🎯 Your turn' : "⏳ Opponent's turn..."
     drawBoard(boardState); return
   }
+
+  // ── WIN ──
   if (t==='win') {
     drawBoard(boardState)
     const youWon = data.player===playerSymbol
     document.getElementById('status').textContent = youWon ? '🎉 You win!' : '😞 You lose!'
     document.getElementById('rematch-btn').style.display = 'inline-block'
+    document.getElementById('rematch-btn').disabled = false
     saveMatch(opponentName, youWon ? 'win' : 'loss')
     clearGameSession()
-    showOverlay(youWon?'🎉 You Win!':'😞 You Lose', youWon?'Congratulations! Want to go again?':'Better luck next time!')
+    showOverlay(youWon?'🎉 You Win!':'😞 You Lose', youWon?'Congratulations! Want a rematch?':'Better luck next time!')
     return
   }
+
   if (t==='opponent_disconnected') {
     document.getElementById('status').textContent = '⏳ Opponent disconnected...'
     showError(data.message); return
   }
-  if (t==='rematch_waiting') { document.getElementById('status').textContent = 'Rematch requested...'; return }
+
+  // ── REMATCH REQUEST (incoming) ──
+  if (t==='rematch_request') {
+    pendingRematchFrom = data.from
+    document.getElementById('rematch-from').textContent = data.from==='X' ? 'Opponent (X)' : 'Opponent (O)'
+    document.getElementById('rematch-banner').classList.add('show')
+    hideOverlay()
+    return
+  }
+
+  // ── REMATCH DECLINED ──
+  if (t==='rematch_declined') {
+    document.getElementById('rematch-btn').disabled = false
+    document.getElementById('status').textContent = '😞 Opponent declined rematch.'
+    showToast('Rematch declined by opponent.')
+    return
+  }
+
+  // ── REMATCH START ──
   if (t==='rematch_start') {
-    hideOverlay(); boardState=Array(9).fill(null); selected=null
+    hideOverlay(); hideRematchBanner()
+    boardState = Array(9).fill(null); selected = null
     drawBoard(boardState)
-    document.getElementById('rematch-btn').style.display='none'
-    document.getElementById('rematch-btn').disabled=false
-    showError(''); document.getElementById('status').textContent='Rematch! Game restarted.'
+    document.getElementById('rematch-btn').style.display = 'none'
+    document.getElementById('rematch-btn').disabled = false
+    showError('')
+    const firstLabel = data.first_turn ? (data.first_turn===playerSymbol ? '🎯 You go first!' : '⏳ Opponent goes first!') : 'Game restarted!'
+    document.getElementById('status').textContent = `🔄 Rematch! ${firstLabel}`
     return
   }
 }
@@ -758,6 +851,7 @@ function drawBoard(board) {
   board.forEach((value,index)=>{
     if (!value) return
     const vertex = document.querySelector(`circle.vertex[data-pos="${index+1}"]`)
+    if (!vertex) return
     const piece  = document.createElementNS('http://www.w3.org/2000/svg','circle')
     piece.setAttribute('class','piece'); piece.setAttribute('data-pos',index+1)
     piece.setAttribute('cx',vertex.getAttribute('cx')); piece.setAttribute('cy',vertex.getAttribute('cy'))
@@ -790,16 +884,16 @@ document.querySelector('svg').addEventListener('click', function(e) {
   selected=null
 })
 
-// keyboard shortcuts
+// ── Keyboard shortcuts ────────────────────────────────────
 document.getElementById('joinCode').addEventListener('keydown',e=>{if(e.key==='Enter')joinGame()})
-document.getElementById('friend-input').addEventListener('keydown',e=>{if(e.key==='Enter')addFriend()})
+document.getElementById('friend-input').addEventListener('keydown',e=>{if(e.key==='Enter')searchUser()})
 document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()})
 document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()})
 document.getElementById('reg-user').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()})
 document.getElementById('reg-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()})
 document.getElementById('reg-pass2').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()})
 
-// leaderboard
+// ── Leaderboard ───────────────────────────────────────────
 document.getElementById('leaderboard-section').addEventListener('toggle',function(){if(this.open)loadLeaderboard()})
 async function loadLeaderboard(){
   try{
