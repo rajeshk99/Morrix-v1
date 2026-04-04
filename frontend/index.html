@@ -737,6 +737,7 @@ function onMessage(event) {
   if (t==='rematch_waiting') { document.getElementById('status').textContent = 'Rematch requested...'; return }
   if (t==='rematch_start') {
     hideOverlay(); boardState=Array(9).fill(null); selected=null
+    drawBoard(boardState)
     document.getElementById('rematch-btn').style.display='none'
     document.getElementById('rematch-btn').disabled=false
     showError(''); document.getElementById('status').textContent='Rematch! Game restarted.'
@@ -794,6 +795,9 @@ document.getElementById('joinCode').addEventListener('keydown',e=>{if(e.key==='E
 document.getElementById('friend-input').addEventListener('keydown',e=>{if(e.key==='Enter')addFriend()})
 document.getElementById('login-user').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()})
 document.getElementById('login-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()})
+document.getElementById('reg-user').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()})
+document.getElementById('reg-pass').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()})
+document.getElementById('reg-pass2').addEventListener('keydown',e=>{if(e.key==='Enter')doRegister()})
 
 // leaderboard
 document.getElementById('leaderboard-section').addEventListener('toggle',function(){if(this.open)loadLeaderboard()})

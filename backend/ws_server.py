@@ -425,9 +425,179 @@ async def handler(websocket):
             await websocket.send(json.dumps({"type": "rejoined", "symbol": player_symbol, "code": code}))
             await broadcast_board(room)
 
-        else:
-            await websocket.send(json.dumps({"type": "error", "message": "Invalid action."}))
-            return
+        # ── LOBBY LOOP (for register/login/auto_login) ────────────────────────
+        # Players who logged in but haven't joined a room yet need to handle
+        # social messages (add_friend, invites, host, join) here.
+        if code is None and username is not None:
+            while code is None:
+                raw2 = await websocket.recv()
+                try:
+                    p2 = json.loads(raw2)
+                except (ValueError, TypeError):
+                    continue
+                if not isinstance(p2, dict):
+                    continue
+                a2 = p2.get("action")
+
+                if a2 == "add_friend":
+                    if not username:
+                        await websocket.send(json.dumps({"type": "error", "message": "Not logged in."}))
+                        continue
+                    friend_name = (p2.get("username") or "").strip()
+                    if not friend_name:
+                        await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "Enter a username."}))
+                        continue
+                    if friend_name == username:
+                        await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "That's you!"}))
+                        continue
+                    if friend_name not in users:
+                        await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "User not found."}))
+                        continue
+                    udata2 = users[username]
+                    if friend_name in udata2.get("friends", []):
+                        await websocket.send(json.dumps({"type": "add_friend_result", "success": False, "message": "Already friends."}))
+                        continue
+                    udata2.setdefault("friends", []).append(friend_name)
+                    save_users()
+                    status2 = get_status(friend_name)
+                    await websocket.send(json.dumps({"type": "add_friend_result", "success": True, "friend": friend_name, "status": status2}))
+                    continue
+
+                if a2 == "remove_friend":
+                    if not username:
+                        continue
+                    friend_name = (p2.get("username") or "").strip()
+                    udata2 = users.get(username, {})
+                    udata2["friends"] = [f for f in udata2.get("friends", []) if f != friend_name]
+                    save_users()
+                    await websocket.send(json.dumps({"type": "remove_friend_result", "success": True, "friend": friend_name}))
+                    continue
+
+                if a2 == "send_invite":
+                    if not username:
+                        continue
+                    target = p2.get("to", "")
+                    target_ws = online_sockets.get(target)
+                    if not target_ws:
+                        await websocket.send(json.dumps({"type": "invite_result", "success": False, "message": f"{target} is offline."}))
+                        continue
+                    try:
+                        await target_ws.send(json.dumps({"type": "incoming_invite", "from": username}))
+                        await websocket.send(json.dumps({"type": "invite_result", "success": True, "to": target}))
+                    except Exception:
+                        await websocket.send(json.dumps({"type": "invite_result", "success": False, "message": f"Could not reach {target}."}))
+                    continue
+
+                if a2 == "accept_invite":
+                    if not username:
+                        continue
+                    inviter = p2.get("from", "")
+                    inviter_ws = online_sockets.get(inviter)
+                    if inviter_ws:
+                        try:
+                            await inviter_ws.send(json.dumps({"type": "invite_accepted", "by": username}))
+                        except Exception:
+                            pass
+                    continue
+
+                if a2 == "decline_invite":
+                    if not username:
+                        continue
+                    inviter = p2.get("from", "")
+                    inviter_ws = online_sockets.get(inviter)
+                    if inviter_ws:
+                        try:
+                            await inviter_ws.send(json.dumps({"type": "invite_declined", "by": username}))
+                        except Exception:
+                            pass
+                    continue
+
+                if a2 == "send_room_code":
+                    if not username:
+                        continue
+                    target    = p2.get("to", "")
+                    room_code = p2.get("code", "")
+                    target_ws = online_sockets.get(target)
+                    if target_ws and room_code:
+                        try:
+                            await target_ws.send(json.dumps({"type": "room_code_for_invitee", "code": room_code}))
+                        except Exception:
+                            pass
+                    continue
+
+                if a2 == "host":
+                    code  = generate_code()
+                    rooms[code] = {
+                        "game":             GameEngine(),
+                        "players":          [websocket, None],
+                        "turn":             "X",
+                        "placed":           0,
+                        "total_moves":      0,
+                        "player_usernames": {"X": username, "O": None},
+                        "symbols":          {websocket: "X"},
+                        "rematch_votes":    set(),
+                    }
+                    player_symbol = "X"
+                    session_token = create_session("X", code, username)
+                    if username:
+                        online_sockets[username] = websocket
+                    print(f"Room {code} created by {username or 'anonymous'} (from lobby loop)")
+                    await websocket.send(json.dumps({"type": "hosted", "code": code, "symbol": "X", "session_token": session_token}))
+                    if username:
+                        await notify_friends_of_status_change(username)
+                    # code is now set — exit lobby loop and fall into game loop
+                    break
+
+                if a2 == "join":
+                    jcode = p2.get("code", "").strip()
+                    if jcode not in rooms:
+                        await websocket.send(json.dumps({"type": "error", "message": "Room not found."}))
+                        continue
+                    jroom = rooms[jcode]
+                    if jroom["players"][1] is not None:
+                        await websocket.send(json.dumps({"type": "error", "message": "Room is already full."}))
+                        continue
+                    code = jcode
+                    jroom["players"][1]              = websocket
+                    jroom["symbols"][websocket]      = "O"
+                    jroom["player_usernames"]["O"]   = username
+                    player_symbol = "O"
+                    session_token = create_session("O", code, username)
+                    print(f"Player O ({username or 'anonymous'}) joined room {code} (from lobby loop)")
+                    await websocket.send(json.dumps({"type": "joined", "symbol": "O", "session_token": session_token}))
+                    for p in jroom["players"]:
+                        if p:
+                            await p.send(json.dumps({"type": "start"}))
+                    await broadcast_board(jroom)
+                    if username:
+                        await notify_friends_of_status_change(username)
+                    break  # code is set — exit lobby loop
+
+                if a2 == "rejoin":
+                    token2 = p2.get("token", "")
+                    sess2  = validate_session(token2)
+                    if not sess2:
+                        await websocket.send(json.dumps({"type": "error", "message": "Session expired."}))
+                        continue
+                    code          = sess2["room_code"]
+                    player_symbol = sess2["symbol"]
+                    username      = sess2.get("username")
+                    if code not in rooms:
+                        await websocket.send(json.dumps({"type": "error", "message": "Room no longer exists."}))
+                        code = None
+                        continue
+                    rroom = rooms[code]
+                    slot = 0 if player_symbol == "X" else 1
+                    rroom["players"][slot]              = websocket
+                    rroom["symbols"][websocket]         = player_symbol
+                    rroom["player_usernames"][player_symbol] = username
+                    if username:
+                        online_sockets[username] = websocket
+                    session_token = token2
+                    print(f"Player {player_symbol} ({username}) rejoined room {code} (from lobby loop)")
+                    await websocket.send(json.dumps({"type": "rejoined", "symbol": player_symbol, "code": code}))
+                    await broadcast_board(rroom)
+                    break  # code is set — exit lobby loop
 
         # ── re-fetch room ─────────────────────────────────────────────────────
         room = rooms.get(code)
