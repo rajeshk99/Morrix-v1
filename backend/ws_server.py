@@ -19,6 +19,9 @@ rooms    = {}
 sessions = {}
 users    = {}
 online_sockets = {}
+# Maps username -> {code, symbol, session_token, opponent} for invite-accepted games
+# Used to break the inviter out of the lobby loop without requiring another recv()
+pending_game_for = {}
 
 DB_PATH = os.environ.get("MORIX_DB", "morix.db")
 
@@ -368,7 +371,11 @@ async def handle_social(websocket, username, parsed, state):
         tok_x = create_session("X", code, inviter)
         tok_o = create_session("O", code, username)
 
-        # Tell inviter they're X
+        # Tell inviter they're X, and register a pending game so their lobby loop breaks out
+        pending_game_for[inviter] = {
+            "code": code, "symbol": "X",
+            "session_token": tok_x, "opponent": username
+        }
         try:
             await inviter_ws.send(json.dumps({
                 "type": "game_ready", "code": code,
@@ -577,7 +584,18 @@ async def handler(websocket):
         if code is None and username is not None:
             state = {"code": None, "player_symbol": None, "session_token": None}
             while state["code"] is None:
-                raw2 = await websocket.recv()
+                # Check if an invite was accepted on our behalf (we become X in a new room)
+                if username in pending_game_for:
+                    pg = pending_game_for.pop(username)
+                    code          = pg["code"]
+                    player_symbol = pg["symbol"]
+                    session_token = pg["session_token"]
+                    break
+
+                try:
+                    raw2 = await asyncio.wait_for(websocket.recv(), timeout=0.5)
+                except asyncio.TimeoutError:
+                    continue  # loop back and re-check pending_game_for
                 try:
                     p2 = json.loads(raw2)
                 except (ValueError, TypeError):
@@ -697,6 +715,7 @@ async def handler(websocket):
                         room["turn"]          = first_turn
                         room["first_turn"]    = first_turn
                         room["rematch_votes"] = {}
+                        room["game_over"]     = False
                         await broadcast(room, {"type": "rematch_start", "first_turn": first_turn})
                         await broadcast_board(room)
                         continue
@@ -709,12 +728,15 @@ async def handler(websocket):
                         if opp_ws:
                             await safe_send(opp_ws, {"type": "rematch_declined", "by": player_symbol})
                         room["rematch_votes"] = {}
-                        continue
+                        # Clean up the room now that rematch is refused
+                        if code in rooms:
+                            del rooms[code]
+                        return
 
             except (ValueError, TypeError):
                 pass
 
-            if room is None or player_symbol != room["turn"]:
+            if room is None or room.get("game_over") or player_symbol != room["turn"]:
                 continue
 
             # PLACEMENT
@@ -726,13 +748,14 @@ async def handler(websocket):
                         room["total_moves"] += 1
                         if room["game"].check_win(player_symbol):
                             loser = "O" if player_symbol == "X" else "X"
+                            room["game_over"] = True
                             await broadcast(room, {"type": "win", "player": player_symbol})
                             await save_game(player_symbol, loser, room["total_moves"])
                             for uname in room.get("player_usernames", {}).values():
                                 if uname and uname in online_sockets:
                                     await notify_friends_of_status_change(uname)
-                            del rooms[code]
-                            return
+                            # Keep room alive for rematch; do NOT delete or return
+                            continue
                         room["turn"] = "O" if room["turn"] == "X" else "X"
                         await broadcast_board(room)
                 except (ValueError, TypeError, KeyError):
@@ -746,13 +769,13 @@ async def handler(websocket):
                     room["total_moves"] += 1
                     if room["game"].check_win(player_symbol):
                         loser = "O" if player_symbol == "X" else "X"
+                        room["game_over"] = True
                         await broadcast(room, {"type": "win", "player": player_symbol})
                         await save_game(player_symbol, loser, room["total_moves"])
                         for uname in room.get("player_usernames", {}).values():
                             if uname and uname in online_sockets:
                                 await notify_friends_of_status_change(uname)
-                        del rooms[code]
-                        return
+                        # Keep room alive for rematch; do NOT delete or return
                     room["turn"] = "O" if room["turn"] == "X" else "X"
                     await broadcast_board(room)
             except (ValueError, KeyError, json.JSONDecodeError):
@@ -760,6 +783,8 @@ async def handler(websocket):
 
     except websockets.exceptions.ConnectionClosed:
         print(f"Player {player_symbol} ({username}) disconnected from room {code}")
+        if username:
+            pending_game_for.pop(username, None)  # clean up any pending invite game
         if username and username in online_sockets and online_sockets[username] is websocket:
             del online_sockets[username]
             await notify_friends_of_status_change(username)
@@ -769,15 +794,16 @@ async def handler(websocket):
             room["players"][slot] = None
             if player_symbol:
                 room["player_usernames"][player_symbol] = None
-            for p in room["players"]:
-                if p is not None:
-                    try:
-                        await p.send(json.dumps({
-                            "type":    "opponent_disconnected",
-                            "message": "Opponent disconnected. Waiting 60s for rejoin..."
-                        }))
-                    except Exception:
-                        pass
+            if not room.get("game_over"):
+                for p in room["players"]:
+                    if p is not None:
+                        try:
+                            await p.send(json.dumps({
+                                "type":    "opponent_disconnected",
+                                "message": "Opponent disconnected. Waiting 60s for rejoin..."
+                            }))
+                        except Exception:
+                            pass
             asyncio.create_task(_room_cleanup_task(code, slot))
 
     except asyncio.TimeoutError:
