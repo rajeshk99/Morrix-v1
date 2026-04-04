@@ -319,12 +319,15 @@ async def safe_send(ws, payload):
 # ── Destroy room immediately (explicit leave) ─────────────────────────────────
 async def destroy_room(code: str, leaving_symbol: str, leaving_username: str):
     room = rooms.pop(code, None)
+    # Always invalidate sessions for this room so auto-rejoin on refresh can't
+    # pull the player back in (Bug #1 fix)
+    invalidate_sessions_for_room(code)
     if room is None:
         return
-    invalidate_sessions_for_room(code)
     other_slot = 1 if leaving_symbol == "X" else 0
     opp_ws = room["players"][other_slot]
-    if opp_ws:
+    # Only notify opponent if game wasn't already over (avoid double-notifying)
+    if opp_ws and not room.get("game_over"):
         try:
             await opp_ws.send(json.dumps({
                 "type":    "opponent_left",

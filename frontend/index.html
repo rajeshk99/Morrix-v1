@@ -383,6 +383,12 @@ function showToast(msg, dur=3000) {
   document.body.appendChild(t); setTimeout(()=>t.remove(), dur)
 }
 function goToLobby() {
+  // Tell the server to destroy the room BEFORE clearing the session token.
+  // This invalidates the server-side session so that auto-login on the next
+  // page load won't find an active_game and auto-rejoin (Bug #1 fix).
+  if (socket && socket.readyState === WebSocket.OPEN) {
+    sendMsg({ action: 'leave_game' })
+  }
   hideOverlay(); clearGameSession(); hideRematchBanner()
   document.getElementById('game').style.display    = 'none'
   document.getElementById('waiting').style.display = 'none'
@@ -408,13 +414,20 @@ function enterGame(symbol, code, token, opponent) {
   playerSymbol = symbol
   gameCode     = code
   opponentName = opponent || 'Opponent'
-  saveGameSession(token, code, symbol)
+  // Always reset board state when entering a game so stale data never
+  // causes the first click to be mis-classified (Bug #2 fix)
+  boardState = Array(9).fill(null)
+  selected   = null
+  document.getElementById('rematch-btn').style.display = 'none'
+  document.getElementById('rematch-btn').disabled = false
+  showError('')
+  if (token) saveGameSession(token, code, symbol)
   setBadges(symbol)
   document.getElementById('lobby').style.display   = 'none'
   document.getElementById('waiting').style.display = 'none'
   document.getElementById('game').style.display    = 'flex'
   document.getElementById('roomCodeSmall').textContent = `Room: ${code}`
-  showError('')
+  drawBoard(boardState)
 }
 
 // ══════════════════════════════════════════════════════════
@@ -662,11 +675,7 @@ function copyCode() {
   })
 }
 function leaveGame() {
-  // Tell server immediately so opponent is notified and room is cleaned up
-  if (socket && socket.readyState === WebSocket.OPEN) {
-    sendMsg({ action: 'leave_game' })
-  }
-  clearGameSession(); hideRematchBanner()
+  // goToLobby() sends leave_game and clears the session
   goToLobby()
 }
 
@@ -760,9 +769,8 @@ function onMessage(event) {
 
   // ── JOINED (manual join) ──
   if (t==='joined') {
-    playerSymbol = data.symbol
-    saveGameSession(data.session_token, document.getElementById('joinCode').value.trim(), data.symbol)
-    setBadges(data.symbol)
+    const jcode = document.getElementById('joinCode').value.trim()
+    enterGame(data.symbol, jcode, data.session_token, null)
     return
   }
 
@@ -779,9 +787,14 @@ function onMessage(event) {
 
   // ── START ──
   if (t==='start') {
-    document.getElementById('lobby').style.display   = 'none'
-    document.getElementById('waiting').style.display = 'none'
-    document.getElementById('game').style.display    = 'flex'
+    // enterGame() was already called by 'joined' or 'game_ready'; just update
+    // room code display and status. Showing the game div again is harmless but
+    // we guard with a check so we never overwrite a freshly drawn empty board.
+    if (document.getElementById('game').style.display === 'none') {
+      document.getElementById('lobby').style.display   = 'none'
+      document.getElementById('waiting').style.display = 'none'
+      document.getElementById('game').style.display    = 'flex'
+    }
     document.getElementById('roomCodeSmall').textContent = `Room: ${gameCode||document.getElementById('joinCode').value}`
     const firstLabel = data.first_turn ? (data.first_turn===playerSymbol ? 'You go first!' : 'Opponent goes first!') : ''
     document.getElementById('status').textContent = `Game started! ${firstLabel}`
